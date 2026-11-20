@@ -270,6 +270,26 @@ def test_zip_upload(client):
         db.close()
 
 
+def test_zip_upload_via_api(client):
+    r = client.post("/api/applications", json={"name": "ZIP-API-TEST"})
+    app_id = r.json()["id"]
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("src/prog.cbl", b"       IDENTIFICATION DIVISION.\n       PROGRAM-ID. Z.\n")
+        zf.writestr("README.txt", b"sample\n")
+    zip_bytes = buf.getvalue()
+
+    r = client.post(
+        f"/api/applications/{app_id}/artifacts",
+        files={"files": ("archive.zip", zip_bytes, "application/zip")},
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 2
+    categories = {a["category"] for a in r.json()}
+    assert "COBOL" in categories
+
+
 def test_folder_import(client, tmp_path, monkeypatch):
     r = client.post("/api/applications", json={"name": "FOLDER-TEST"})
     app_id = r.json()["id"]

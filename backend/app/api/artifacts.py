@@ -48,22 +48,32 @@ async def upload_artifacts(
         raise HTTPException(status_code=404, detail="Application not found")
 
     file_data: list[tuple[str, str, bytes]] = []
+    all_results: list = []
     for f in files:
         data = await _read_upload(f)
-        # webkitRelativePath is sent by browsers as the filename for folder uploads
-        # FastAPI puts it in f.filename; we also check for a relative_path form field
-        rel = ""
         fname = f.filename or "unnamed"
-        # If filename contains a path separator, treat it as a relative path
+        rel = ""
         if "/" in fname or "\\" in fname:
             rel = fname
             fname = Path(fname).name
-        file_data.append((fname, rel, data))
 
-    try:
-        return artifact_service.ingest_uploaded_files(db, app_id, file_data)
-    except SecurityError as e:
-        raise HTTPException(status_code=422, detail=e.reason)
+        if fname.lower().endswith(".zip") and data[:2] == b"PK":
+            try:
+                zip_results = artifact_service.ingest_zip(db, app_id, data)
+                all_results.extend(zip_results)
+            except SecurityError as e:
+                raise HTTPException(status_code=422, detail=e.reason)
+        else:
+            file_data.append((fname, rel, data))
+
+    if file_data:
+        try:
+            results = artifact_service.ingest_uploaded_files(db, app_id, file_data)
+            all_results.extend(results)
+        except SecurityError as e:
+            raise HTTPException(status_code=422, detail=e.reason)
+
+    return all_results
 
 
 @router.post(
