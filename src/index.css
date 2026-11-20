@@ -191,6 +191,25 @@ html[data-wallpaper='custom'] .app-blob { opacity: 0.18; }
   }
 }
 
+.input-base {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.5);
+  border: 1px solid rgb(255 255 255 / 0.4);
+  font-size: 0.875rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.input-base:focus {
+  border-color: rgb(var(--accent-rgb) / 0.5);
+  background: rgb(255 255 255 / 0.7);
+}
+.input-base::placeholder { color: var(--ink-soft); }
+
+.solid-border { border-color: #E2DED8; }
+
 button, input { font: inherit; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }

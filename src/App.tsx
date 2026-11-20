@@ -3,6 +3,8 @@ import { ThemeProvider } from '@/hooks/useTheme';
 import { useActiveTab } from '@/hooks/useActiveTab';
 import AppLayout from '@/layouts/AppLayout';
 import Dashboard from '@/pages/Dashboard';
+import ApplicationsPage from '@/pages/ApplicationsPage';
+import ArtifactsPage from '@/pages/ArtifactsPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 
 export default function App() {
@@ -13,8 +15,8 @@ export default function App() {
       <AppLayout activeTab={activeTab} onTabChange={setActiveTab}>
         <Routes>
           <Route path="/" element={<Dashboard activeTab={activeTab} />} />
-          <Route path="/applications" element={<PlaceholderPage moduleId="applications" />} />
-          <Route path="/artifacts" element={<PlaceholderPage moduleId="artifacts" />} />
+          <Route path="/applications" element={<ApplicationsPage />} />
+          <Route path="/artifacts" element={<ArtifactsPage />} />
           <Route path="/intelligence" element={<PlaceholderPage moduleId="intelligence" />} />
           <Route path="/dependencies" element={<PlaceholderPage moduleId="dependencies" />} />
           <Route path="/complexity" element={<PlaceholderPage moduleId="complexity" />} />

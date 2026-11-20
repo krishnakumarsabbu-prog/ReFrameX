@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import GlassRail from '@/components/GlassRail';
 import TopPillBar from '@/components/TopPillBar';
 import BottomTabBar from '@/components/BottomTabBar';
@@ -13,6 +13,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, activeTab, onTabChange }: AppLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const currentModule = useMemo(() => railItems.find(
     (item) => item.path === location.pathname || (item.path !== '/' && location.pathname.startsWith(item.path))
@@ -20,6 +21,8 @@ export default function AppLayout({ children, activeTab, onTabChange }: AppLayou
 
   const tabs = currentModule?.tabs ?? (currentModule?.id === 'dashboard' ? dashboardTabs() : undefined);
   const showAddAction = currentModule?.id === 'applications';
+  const addActionLabel = showAddAction ? 'New application' : undefined;
+  const onAddAction = showAddAction ? () => navigate('/applications') : undefined;
 
   return (
     <>
@@ -46,7 +49,8 @@ export default function AppLayout({ children, activeTab, onTabChange }: AppLayou
           activeTab={activeTab}
           onTabChange={onTabChange}
           showAddAction={showAddAction}
-          addActionLabel={showAddAction ? 'New application' : undefined}
+          addActionLabel={addActionLabel}
+          onAddAction={onAddAction}
         />
       )}
     </>

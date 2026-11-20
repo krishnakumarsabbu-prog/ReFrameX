@@ -11,8 +11,8 @@ import type {
 
 export const railItems: RailItem[] = [
   { id: 'dashboard', label: 'Executive Dashboard', path: '/', icon: 'LayoutDashboard' },
-  { id: 'applications', label: 'Applications', path: '/applications', icon: 'Boxes' },
-  { id: 'artifacts', label: 'Artifact Explorer', path: '/artifacts', icon: 'FileSearch' },
+  { id: 'applications', label: 'Applications', path: '/applications', icon: 'Boxes', tabs: [{ id: 'all', label: 'All' }] },
+  { id: 'artifacts', label: 'Artifact Explorer', path: '/artifacts', icon: 'FileSearch', tabs: [{ id: 'all', label: 'Inventory' }] },
   { id: 'intelligence', label: 'Application Intelligence', path: '/intelligence', icon: 'Sparkles' },
   { id: 'dependencies', label: 'Dependency Intelligence', path: '/dependencies', icon: 'GitBranch' },
   {
