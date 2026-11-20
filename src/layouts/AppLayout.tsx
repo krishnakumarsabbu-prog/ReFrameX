@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import GlassRail from '@/components/GlassRail';
 import TopPillBar from '@/components/TopPillBar';
@@ -14,26 +14,30 @@ interface AppLayoutProps {
 export default function AppLayout({ children, activeTab, onTabChange }: AppLayoutProps) {
   const location = useLocation();
 
-  const currentModule = useMemo(() => {
-    return railItems.find(
-      (item) => item.path === location.pathname || (item.path !== '/' && location.pathname.startsWith(item.path))
-    );
-  }, [location.pathname]);
+  const currentModule = useMemo(() => railItems.find(
+    (item) => item.path === location.pathname || (item.path !== '/' && location.pathname.startsWith(item.path))
+  ), [location.pathname]);
 
   const tabs = currentModule?.tabs ?? (currentModule?.id === 'dashboard' ? dashboardTabs() : undefined);
   const showAddAction = currentModule?.id === 'applications';
 
   return (
     <>
-      <div className="app-bg" />
+      <div className="app-bg" aria-hidden="true">
+        <span className="app-blob app-blob--bronze" />
+        <span className="app-blob app-blob--sand" />
+        <span className="app-blob app-blob--amber" />
+        <span className="app-blob app-blob--teal" />
+        <span className="app-blob app-blob--brown" />
+        <span className="app-blob app-blob--light" />
+      </div>
       <TopPillBar />
       <GlassRail />
 
-      <main
-        className="min-h-screen pt-24 pb-24 px-4 transition-all duration-200"
-        style={{ paddingLeft: 'calc(5rem + 0.5rem)', paddingRight: '1rem' }}
-      >
-        <div className="max-w-7xl mx-auto">{children}</div>
+      <main className="min-h-screen pt-24 pb-24 px-3 sm:px-4 md:px-6 transition-all duration-200" style={{ paddingLeft: 'clamp(5rem, 8vw, 7rem)' }}>
+        <div className="workspace-shell rounded-[var(--workspace-radius)] max-w-[1480px] mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+          {children}
+        </div>
       </main>
 
       {tabs && tabs.length > 0 && (

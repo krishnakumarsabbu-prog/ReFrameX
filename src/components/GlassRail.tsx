@@ -22,9 +22,9 @@ export default function GlassRail() {
               to={item.path}
               end={item.path === '/'}
               className={({ isActive }) =>
-                `group relative flex items-center gap-3 rounded-2xl transition-all duration-200 ${
+                `group relative flex items-center gap-3 rounded-2xl transition-[background-color,transform] duration-200 ${
                   railExpanded ? 'px-3 py-2.5' : 'px-2 py-2.5 justify-center'
-                } ${isActive ? 'bg-white/80 shadow-sm' : 'hover:bg-white/40'}`
+                } ${isActive ? 'bg-white/90 shadow-sm' : 'hover:bg-white/35'}`
               }
             >
               {({ isActive }) => (
@@ -34,7 +34,7 @@ export default function GlassRail() {
                   )}
                   <span
                     className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
-                      isActive ? 'bg-accent text-white' : 'text-ink-muted group-hover:text-ink'
+                      isActive ? 'bg-white text-ink' : 'text-ink-muted group-hover:text-ink'
                     }`}
                   >
                     <Icon size={18} strokeWidth={2} />

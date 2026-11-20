@@ -163,6 +163,7 @@ function OverviewTab({ kpiIcons, navigate }: { kpiIcons: React.ReactNode[]; navi
             trendDirection={kpi.trendDirection}
             hint={kpi.hint}
             icon={kpiIcons[i]}
+            featured={kpi.id === 'components'}
           />
         ))}
       </div>

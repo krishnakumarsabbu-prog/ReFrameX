@@ -25,9 +25,9 @@ export default {
         },
         // Ink / text
         ink: {
-          DEFAULT: '#1B1B20',
-          muted: '#5A5A64',
-          soft: '#8A8A93',
+          DEFAULT: 'var(--ink)',
+          muted: 'var(--ink-muted)',
+          soft: 'var(--ink-soft)',
         },
         // Glass surfaces
         glass: {
@@ -44,15 +44,17 @@ export default {
       },
       borderRadius: {
         bento: '28px',
+        tile: '20px',
+        workspace: '44px',
         pill: '999px',
       },
       backdropBlur: {
-        glass: '30px',
+        glass: '44px',
         dense: '40px',
       },
       boxShadow: {
-        glass: '0 8px 32px rgba(60, 40, 20, 0.10), 0 2px 8px rgba(60, 40, 20, 0.06)',
-        float: '0 12px 40px rgba(60, 40, 20, 0.14), 0 4px 12px rgba(60, 40, 20, 0.08)',
+        glass: '0 20px 50px rgba(40, 25, 10, 0.18), inset 0 1px 0 rgba(255,255,255,0.45)',
+        float: '0 24px 60px rgba(40, 25, 10, 0.22), inset 0 1px 0 rgba(255,255,255,0.55)',
         ring: '0 0 0 1px rgb(255 255 255 / 0.6) inset',
       },
       fontFamily: {

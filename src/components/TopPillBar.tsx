@@ -38,7 +38,7 @@ export default function TopPillBar() {
 
   return (
     <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-6xl">
-      <div className="glass-strong rounded-bento flex items-center gap-3 px-4 py-2.5">
+      <div className="glass-strong rounded-pill flex items-center gap-3 px-4 py-2.5">
         {/* Logo + avatar */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export default function TopPillBar() {
                 if (e.key === 'Enter' && results[0]) handleSelect(results[0].path);
               }}
               placeholder="Search modules…"
-              className="w-full pl-9 pr-16 py-2 rounded-2xl bg-white/40 border border-white/30 text-sm text-ink placeholder:text-ink-soft focus:bg-white/60 focus:border-accent/40 transition-colors outline-none"
+              className="w-full pl-9 pr-16 py-2 rounded-pill inner-glass text-sm text-ink placeholder:text-ink-soft focus:bg-white/35 focus:border-accent/50 transition-colors outline-none"
             />
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-ink/8 text-[10px] text-ink-soft font-mono">
               <Command size={10} />K
@@ -107,14 +107,14 @@ export default function TopPillBar() {
             <Contrast size={16} />
           </button>
           <button
-            className="relative flex items-center justify-center w-8 h-8 rounded-full text-ink-muted hover:bg-white/40 transition-colors"
+            className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-ink-muted hover:bg-white transition-colors shadow-sm"
             aria-label="Notifications"
           >
             <Bell size={16} />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent" />
           </button>
           <button
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/40 hover:bg-white/60 transition-colors text-xs font-medium text-ink-muted"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full inner-glass hover:bg-white/35 transition-colors text-xs font-medium text-ink-muted"
             aria-label="Application selector"
           >
             All Applications

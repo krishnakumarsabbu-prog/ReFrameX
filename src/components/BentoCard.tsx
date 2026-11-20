@@ -12,7 +12,7 @@ export default function BentoCard({ children, className = '', dense = false, onC
   return (
     <div
       onClick={onClick}
-      className={`${base} rounded-bento transition-all duration-200 ${onClick ? 'cursor-pointer hover:shadow-float hover:-translate-y-0.5' : ''} ${className}`}
+      className={`${base} rounded-bento transition-[box-shadow,transform,border-color] duration-200 ${onClick ? 'cursor-pointer hover:shadow-float hover:-translate-y-0.5' : ''} hover:border-white/70 ${className}`}
     >
       {children}
     </div>

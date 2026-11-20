@@ -8,16 +8,17 @@ interface MetricCardProps {
   trendDirection?: 'up' | 'down' | 'flat';
   hint?: string;
   icon?: ReactNode;
+  featured?: boolean;
 }
 
-export default function MetricCard({ label, value, unit, trend, trendDirection, hint, icon }: MetricCardProps) {
+export default function MetricCard({ label, value, unit, trend, trendDirection, hint, icon, featured = false }: MetricCardProps) {
   const trendColor =
     trendDirection === 'up' ? 'text-severity-low' :
     trendDirection === 'down' ? 'text-severity-high' :
     'text-ink-soft';
 
   return (
-    <div className="glass rounded-bento p-5 transition-all duration-200 hover:shadow-float hover:-translate-y-0.5 h-full">
+    <div className={`${featured ? 'featured-surface' : 'glass'} rounded-bento p-5 transition-[box-shadow,transform,border-color] duration-200 hover:shadow-float hover:-translate-y-0.5 hover:border-white/70 h-full`}>
       <div className="flex items-start justify-between mb-3">
         <span className="text-xs font-medium text-ink-muted tracking-wide uppercase">{label}</span>
         {icon && <span className="text-ink-soft">{icon}</span>}
