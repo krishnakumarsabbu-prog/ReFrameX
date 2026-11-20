@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/AppLayout';
 import Dashboard from '@/pages/Dashboard';
 import ApplicationsPage from '@/pages/ApplicationsPage';
 import ArtifactsPage from '@/pages/ArtifactsPage';
+import IntelligencePage from '@/pages/IntelligencePage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 
 export default function App() {
@@ -17,7 +18,7 @@ export default function App() {
           <Route path="/" element={<Dashboard activeTab={activeTab} />} />
           <Route path="/applications" element={<ApplicationsPage />} />
           <Route path="/artifacts" element={<ArtifactsPage />} />
-          <Route path="/intelligence" element={<PlaceholderPage moduleId="intelligence" />} />
+          <Route path="/intelligence" element={<IntelligencePage />} />
           <Route path="/dependencies" element={<PlaceholderPage moduleId="dependencies" />} />
           <Route path="/complexity" element={<PlaceholderPage moduleId="complexity" />} />
           <Route path="/evidence" element={<PlaceholderPage moduleId="evidence" />} />

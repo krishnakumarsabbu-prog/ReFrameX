@@ -1,0 +1,251 @@
+{
+  "_description": "Hand-verified expected components and relationships for ground truth samples.",
+  "_note": "Verified by hand BEFORE running parsers. Never adjusted to make numbers look better.",
+  "samples": {
+    "CLAIMCTL.cbl": {
+      "category": "COBOL",
+      "expected_components": [
+        {"name": "CLAIMCTL", "type": "PROGRAM", "line_start": 2, "rule": "COBOL_PROGRAM_ID"},
+        {"name": "IDENTIFICATION DIVISION", "type": "MODULE", "line_start": 1, "rule": "COBOL_DIVISION"},
+        {"name": "ENVIRONMENT DIVISION", "type": "MODULE", "line_start": 8, "rule": "COBOL_DIVISION"},
+        {"name": "INPUT-OUTPUT SECTION", "type": "MODULE", "line_start": 9, "rule": "COBOL_SECTION"},
+        {"name": "FILE-CONTROL", "type": "MODULE", "line_start": 10, "rule": "COBOL_PARAGRAPH"},
+        {"name": "DATA DIVISION", "type": "MODULE", "line_start": 14, "rule": "COBOL_DIVISION"},
+        {"name": "FILE SECTION", "type": "MODULE", "line_start": 15, "rule": "COBOL_SECTION"},
+        {"name": "WORKING-STORAGE SECTION", "type": "MODULE", "line_start": 27, "rule": "COBOL_SECTION"},
+        {"name": "PROCEDURE DIVISION", "type": "MODULE", "line_start": 31, "rule": "COBOL_DIVISION"},
+        {"name": "MAIN-PARA", "type": "MODULE", "line_start": 32, "rule": "COBOL_PARAGRAPH"},
+        {"name": "CLAIM-FILE", "type": "FILE", "line_start": 11, "rule": "COBOL_SELECT_ASSIGN"},
+        {"name": "CLAIM-FILE", "type": "FILE", "line_start": 16, "rule": "COBOL_FD"},
+        {"name": "CLAIM-REC", "type": "DATA_STRUCTURE", "line_start": 20, "rule": "COBOL_FD_RECORD"},
+        {"name": "WS-EOF", "type": "DATA_STRUCTURE", "line_start": 28, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-TOTAL", "type": "DATA_STRUCTURE", "line_start": 29, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "PERFORM", "type": "CONTROL_FLOW", "line_start": 1, "rule": "COBOL_PERFORM_NESTING"}
+      ]
+    },
+    "PAYCALC.cbl": {
+      "category": "COBOL",
+      "expected_components": [
+        {"name": "PAYCALC", "type": "PROGRAM", "line_start": 2, "rule": "COBOL_PROGRAM_ID"},
+        {"name": "IDENTIFICATION DIVISION", "type": "MODULE", "line_start": 1, "rule": "COBOL_DIVISION"},
+        {"name": "ENVIRONMENT DIVISION", "type": "MODULE", "line_start": 5, "rule": "COBOL_DIVISION"},
+        {"name": "INPUT-OUTPUT SECTION", "type": "MODULE", "line_start": 6, "rule": "COBOL_SECTION"},
+        {"name": "FILE-CONTROL", "type": "MODULE", "line_start": 7, "rule": "COBOL_PARAGRAPH"},
+        {"name": "DATA DIVISION", "type": "MODULE", "line_start": 12, "rule": "COBOL_DIVISION"},
+        {"name": "FILE SECTION", "type": "MODULE", "line_start": 13, "rule": "COBOL_SECTION"},
+        {"name": "WORKING-STORAGE SECTION", "type": "MODULE", "line_start": 24, "rule": "COBOL_SECTION"},
+        {"name": "PROCEDURE DIVISION", "type": "MODULE", "line_start": 41, "rule": "COBOL_DIVISION"},
+        {"name": "MAIN-PARA", "type": "MODULE", "line_start": 42, "rule": "COBOL_PARAGRAPH"},
+        {"name": "READ-RECORDS", "type": "MODULE", "line_start": 50, "rule": "COBOL_PARAGRAPH"},
+        {"name": "CALC-PAY", "type": "MODULE", "line_start": 61, "rule": "COBOL_PARAGRAPH"},
+        {"name": "WRITE-REPORT", "type": "MODULE", "line_start": 66, "rule": "COBOL_PARAGRAPH"},
+        {"name": "CALCTAX", "type": "PROGRAM", "line_start": 35, "rule": "COBOL_CALL_STATIC"},
+        {"name": "WS-CALL-TARGET", "type": "PROGRAM", "line_start": 36, "rule": "COBOL_CALL_DYNAMIC"},
+        {"name": "PAYROLL-FILE", "type": "FILE", "line_start": 11, "rule": "COBOL_SELECT_ASSIGN"},
+        {"name": "REPORT-FILE", "type": "FILE", "line_start": 14, "rule": "COBOL_SELECT_ASSIGN"},
+        {"name": "PAYROLL-FILE", "type": "FILE", "line_start": 18, "rule": "COBOL_FD"},
+        {"name": "REPORT-FILE", "type": "FILE", "line_start": 24, "rule": "COBOL_FD"},
+        {"name": "PAYROLL-REC", "type": "DATA_STRUCTURE", "line_start": 17, "rule": "COBOL_FD_RECORD"},
+        {"name": "WS-EOF", "type": "DATA_STRUCTURE", "line_start": 25, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-CALL-TARGET", "type": "DATA_STRUCTURE", "line_start": 26, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-PAY-STRUCT", "type": "DATA_STRUCTURE", "line_start": 27, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-REDEF-AREA", "type": "DATA_STRUCTURE", "line_start": 33, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-RED-ALPHA", "type": "DATA_STRUCTURE", "line_start": 36, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-TABLE", "type": "DATA_STRUCTURE", "line_start": 38, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-PACKED", "type": "DATA_STRUCTURE", "line_start": 40, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "PERFORM", "type": "CONTROL_FLOW", "line_start": 1, "rule": "COBOL_PERFORM_NESTING"}
+      ],
+      "commented_calls": [
+        {"name": "OLDPROG", "line": 39, "note": "CALL in comment — should NOT be extracted"}
+      ]
+    },
+    "BATCHCTL.cbl": {
+      "category": "COBOL",
+      "expected_components": [
+        {"name": "BATCHCTL", "type": "PROGRAM", "line_start": 2, "rule": "COBOL_PROGRAM_ID"},
+        {"name": "IDENTIFICATION DIVISION", "type": "MODULE", "line_start": 1, "rule": "COBOL_DIVISION"},
+        {"name": "ENVIRONMENT DIVISION", "type": "MODULE", "line_start": 5, "rule": "COBOL_DIVISION"},
+        {"name": "DATA DIVISION", "type": "MODULE", "line_start": 6, "rule": "COBOL_DIVISION"},
+        {"name": "WORKING-STORAGE SECTION", "type": "MODULE", "line_start": 7, "rule": "COBOL_SECTION"},
+        {"name": "PROCEDURE DIVISION", "type": "MODULE", "line_start": 12, "rule": "COBOL_DIVISION"},
+        {"name": "MAIN-PARA", "type": "MODULE", "line_start": 13, "rule": "COBOL_PARAGRAPH"},
+        {"name": "DB-READ", "type": "MODULE", "line_start": 18, "rule": "COBOL_PARAGRAPH"},
+        {"name": "CICS-SEND", "type": "MODULE", "line_start": 25, "rule": "COBOL_PARAGRAPH"},
+        {"name": "DB-UPDATE", "type": "MODULE", "line_start": 31, "rule": "COBOL_PARAGRAPH"},
+        {"name": "END-PROG", "type": "MODULE", "line_start": 41, "rule": "COBOL_PARAGRAPH"},
+        {"name": "WS-SQLCODE", "type": "DATA_STRUCTURE", "line_start": 8, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-EMP-ID", "type": "DATA_STRUCTURE", "line_start": 9, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-EMP-NAME", "type": "DATA_STRUCTURE", "line_start": 10, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-TRANS-ID", "type": "DATA_STRUCTURE", "line_start": 11, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "GOTO", "type": "CONTROL_FLOW", "line_start": 16, "rule": "COBOL_GOTO"},
+        {"name": "SQL-SELECT", "type": "TABLE", "line_start": 18, "rule": "COBOL_EXEC_SQL"},
+        {"name": "CICS-CALL", "type": "TRANSACTION", "line_start": 26, "rule": "COBOL_EXEC_CICS"},
+        {"name": "SQL-UPDATE", "type": "TABLE", "line_start": 32, "rule": "COBOL_EXEC_SQL"},
+        {"name": "CICS-CALL", "type": "TRANSACTION", "line_start": 38, "rule": "COBOL_EXEC_CICS"},
+        {"name": "PERFORM", "type": "CONTROL_FLOW", "line_start": 1, "rule": "COBOL_PERFORM_NESTING"}
+      ]
+    },
+    "SORTCTL.cbl": {
+      "category": "COBOL",
+      "expected_components": [
+        {"name": "SORTCTL", "type": "PROGRAM", "line_start": 2, "rule": "COBOL_PROGRAM_ID"},
+        {"name": "IDENTIFICATION DIVISION", "type": "MODULE", "line_start": 1, "rule": "COBOL_DIVISION"},
+        {"name": "ENVIRONMENT DIVISION", "type": "MODULE", "line_start": 5, "rule": "COBOL_DIVISION"},
+        {"name": "INPUT-OUTPUT SECTION", "type": "MODULE", "line_start": 6, "rule": "COBOL_SECTION"},
+        {"name": "FILE-CONTROL", "type": "MODULE", "line_start": 7, "rule": "COBOL_PARAGRAPH"},
+        {"name": "DATA DIVISION", "type": "MODULE", "line_start": 12, "rule": "COBOL_DIVISION"},
+        {"name": "FILE SECTION", "type": "MODULE", "line_start": 13, "rule": "COBOL_SECTION"},
+        {"name": "WORKING-STORAGE SECTION", "type": "MODULE", "line_start": 20, "rule": "COBOL_SECTION"},
+        {"name": "PROCEDURE DIVISION", "type": "MODULE", "line_start": 25, "rule": "COBOL_DIVISION"},
+        {"name": "MAIN-PARA", "type": "MODULE", "line_start": 26, "rule": "COBOL_PARAGRAPH"},
+        {"name": "INIT-PARA", "type": "MODULE", "line_start": 30, "rule": "COBOL_PARAGRAPH"},
+        {"name": "PROCESS-PARA", "type": "MODULE", "line_start": 33, "rule": "COBOL_PARAGRAPH"},
+        {"name": "END-PARA", "type": "MODULE", "line_start": 42, "rule": "COBOL_PARAGRAPH"},
+        {"name": "INPREC", "type": "COPYBOOK", "line_start": 17, "rule": "COBOL_COPY"},
+        {"name": "INPUT-FILE", "type": "FILE", "line_start": 8, "rule": "COBOL_SELECT_ASSIGN"},
+        {"name": "OUTPUT-FILE", "type": "FILE", "line_start": 10, "rule": "COBOL_SELECT_ASSIGN"},
+        {"name": "INPUT-FILE", "type": "FILE", "line_start": 14, "rule": "COBOL_FD"},
+        {"name": "OUTPUT-FILE", "type": "FILE", "line_start": 18, "rule": "COBOL_FD"},
+        {"name": "INPUT-REC", "type": "DATA_STRUCTURE", "line_start": 16, "rule": "COBOL_FD_RECORD"},
+        {"name": "WS-EOF", "type": "DATA_STRUCTURE", "line_start": 21, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-CONT-MAX", "type": "DATA_STRUCTURE", "line_start": 22, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-LONG-NAME", "type": "DATA_STRUCTURE", "line_start": 23, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "GOTO", "type": "CONTROL_FLOW", "line_start": 29, "rule": "COBOL_GOTO"},
+        {"name": "PERFORM", "type": "CONTROL_FLOW", "line_start": 1, "rule": "COBOL_PERFORM_NESTING"}
+      ],
+      "commented_copies": [
+        {"name": "POLICY", "line": 7, "note": "COPY in comment — should NOT be extracted"}
+      ]
+    },
+    "COPYTEST.cbl": {
+      "category": "COBOL",
+      "expected_components": [
+        {"name": "COPYTEST", "type": "PROGRAM", "line_start": 2, "rule": "COBOL_PROGRAM_ID"},
+        {"name": "IDENTIFICATION DIVISION", "type": "MODULE", "line_start": 1, "rule": "COBOL_DIVISION"},
+        {"name": "ENVIRONMENT DIVISION", "type": "MODULE", "line_start": 6, "rule": "COBOL_DIVISION"},
+        {"name": "DATA DIVISION", "type": "MODULE", "line_start": 7, "rule": "COBOL_DIVISION"},
+        {"name": "WORKING-STORAGE SECTION", "type": "MODULE", "line_start": 8, "rule": "COBOL_SECTION"},
+        {"name": "PROCEDURE DIVISION", "type": "MODULE", "line_start": 12, "rule": "COBOL_DIVISION"},
+        {"name": "MAIN-PARA", "type": "MODULE", "line_start": 13, "rule": "COBOL_PARAGRAPH"},
+        {"name": "POLICY", "type": "COPYBOOK", "line_start": 11, "rule": "COBOL_COPY"},
+        {"name": "WS-DATA", "type": "DATA_STRUCTURE", "line_start": 9, "rule": "COBOL_WORKING_STORAGE"},
+        {"name": "WS-STATUS", "type": "DATA_STRUCTURE", "line_start": 11, "rule": "COBOL_WORKING_STORAGE"}
+      ],
+      "commented_copies": [
+        {"name": "POLICY", "line": 7, "note": "COPY in comment — should NOT be extracted"}
+      ]
+    },
+    "POLICY.cpy": {
+      "category": "Copybook",
+      "expected_components": [
+        {"name": "POLICY-RECORD", "type": "DATA_STRUCTURE", "line_start": 2, "rule": "COPYBOOK_RECORD_LAYOUT"}
+      ]
+    },
+    "EMPLOYEE.cpy": {
+      "category": "Copybook",
+      "expected_components": [
+        {"name": "EMPLOYEE-RECORD", "type": "DATA_STRUCTURE", "line_start": 1, "rule": "COPYBOOK_RECORD_LAYOUT"}
+      ]
+    },
+    "TRANSREC.cpy": {
+      "category": "Copybook",
+      "expected_components": [
+        {"name": "TRANS-RECORD", "type": "DATA_STRUCTURE", "line_start": 1, "rule": "COPYBOOK_RECORD_LAYOUT"}
+      ]
+    },
+    "CLAIMJOB.jcl": {
+      "category": "JCL",
+      "expected_components": [
+        {"name": "CLAIMJOB", "type": "JOB", "line_start": 1, "rule": "JCL_JOB"},
+        {"name": "CLAIMCTL", "type": "PROGRAM", "line_start": 6, "rule": "JCL_EXEC"},
+        {"name": "SORT", "type": "PROGRAM", "line_start": 11, "rule": "JCL_EXEC"},
+        {"name": "REPORTS", "type": "PROC", "line_start": 18, "rule": "JCL_EXEC"},
+        {"name": "STEPLIB", "type": "DATASET", "line_start": 7, "rule": "JCL_DD"},
+        {"name": "CLMFILE", "type": "DATASET", "line_start": 8, "rule": "JCL_DD"},
+        {"name": "SYSOUT", "type": "FILE", "line_start": 9, "rule": "JCL_DD"},
+        {"name": "SYSPRINT", "type": "FILE", "line_start": 10, "rule": "JCL_DD"},
+        {"name": "SORTIN", "type": "DATASET", "line_start": 12, "rule": "JCL_DD"},
+        {"name": "SORTOUT", "type": "DATASET", "line_start": 13, "rule": "JCL_DD"},
+        {"name": "SYSIN", "type": "FILE", "line_start": 15, "rule": "JCL_DD"},
+        {"name": "RPTFILE", "type": "DATASET", "line_start": 19, "rule": "JCL_DD"},
+        {"name": "SYSIN", "type": "FILE", "line_start": 20, "rule": "JCL_DD"}
+      ]
+    },
+    "PAYJOB.jcl": {
+      "category": "JCL",
+      "expected_components": [
+        {"name": "PAYJOB", "type": "JOB", "line_start": 1, "rule": "JCL_JOB"},
+        {"name": "PAYCALC", "type": "PROGRAM", "line_start": 7, "rule": "JCL_EXEC"},
+        {"name": "PAYFILE", "type": "DATASET", "line_start": 8, "rule": "JCL_DD"},
+        {"name": "RPTFILE", "type": "DATASET", "line_start": 9, "rule": "JCL_DD"},
+        {"name": "SYSOUT", "type": "FILE", "line_start": 10, "rule": "JCL_DD"},
+        {"name": "IF-THEN-ELSE", "type": "CONTROL_FLOW", "line_start": 13, "rule": "JCL_IF_THEN"},
+        {"name": "PAYTAX", "type": "PROGRAM", "line_start": 14, "rule": "JCL_EXEC"},
+        {"name": "TAXFILE", "type": "DATASET", "line_start": 15, "rule": "JCL_DD"},
+        {"name": "SYSOUT", "type": "FILE", "line_start": 16, "rule": "JCL_DD"},
+        {"name": "IEBGENER", "type": "PROGRAM", "line_start": 18, "rule": "JCL_EXEC"},
+        {"name": "SYSCOPY", "type": "DATASET", "line_start": 19, "rule": "JCL_DD"},
+        {"name": "SYSUT1", "type": "DATASET", "line_start": 20, "rule": "JCL_DD"},
+        {"name": "SYSUT2", "type": "DATASET", "line_start": 21, "rule": "JCL_DD"}
+      ]
+    },
+    "DB2JOB.jcl": {
+      "category": "JCL",
+      "expected_components": [
+        {"name": "DB2JOB", "type": "JOB", "line_start": 1, "rule": "JCL_JOB"},
+        {"name": "DSNUTILB", "type": "PROGRAM", "line_start": 6, "rule": "JCL_EXEC"},
+        {"name": "SYSPRINT", "type": "FILE", "line_start": 7, "rule": "JCL_DD"},
+        {"name": "SYSIN", "type": "FILE", "line_start": 8, "rule": "JCL_DD"},
+        {"name": "IKJEFT01", "type": "PROGRAM", "line_start": 10, "rule": "JCL_EXEC"},
+        {"name": "SYSTSIN", "type": "DATASET", "line_start": 11, "rule": "JCL_DD"},
+        {"name": "SYSOUT", "type": "FILE", "line_start": 15, "rule": "JCL_DD"},
+        {"name": "SYSPRINT", "type": "FILE", "line_start": 16, "rule": "JCL_DD"}
+      ]
+    },
+    "LOAN_DDL.sql": {
+      "category": "SQL",
+      "expected_components": [
+        {"name": "CLAIMS.LOAN_MASTER", "type": "TABLE", "line_start": 1, "rule": "SQL_CREATE_TABLE"},
+        {"name": "IX_LOAN_CUST", "type": "TABLE", "line_start": 12, "rule": "SQL_CREATE_INDEX"},
+        {"name": "SELECT-QUERY", "type": "TABLE", "line_start": 14, "rule": "SQL_SELECT"}
+      ]
+    },
+    "EMP_DDL.sql": {
+      "category": "SQL",
+      "expected_components": [
+        {"name": "EMPLOYEE.EMP_MASTER", "type": "TABLE", "line_start": 1, "rule": "SQL_CREATE_TABLE"},
+        {"name": "IX_EMP_DEPT", "type": "TABLE", "line_start": 9, "rule": "SQL_CREATE_INDEX"},
+        {"name": "EMP_ACTIVE_VIEW", "type": "TABLE", "line_start": 11, "rule": "SQL_CREATE_VIEW"},
+        {"name": "EMPLOYEE.EMP_MASTER", "type": "TABLE", "line_start": 16, "rule": "SQL_INSERT"},
+        {"name": "EMPLOYEE.EMP_MASTER", "type": "TABLE", "line_start": 19, "rule": "SQL_UPDATE"},
+        {"name": "EMPLOYEE.EMP_MASTER", "type": "TABLE", "line_start": 22, "rule": "SQL_DELETE"}
+      ]
+    },
+    "CLAIM_DDL.sql": {
+      "category": "SQL",
+      "expected_components": [
+        {"name": "CLAIMS.CLAIM_TRANS", "type": "TABLE", "line_start": 2, "rule": "SQL_CREATE_TABLE"},
+        {"name": "IX_CLAIM_POL", "type": "TABLE", "line_start": 10, "rule": "SQL_CREATE_INDEX"},
+        {"name": "CLAIMS.PROC_ADJ_CLAIM", "type": "EXTERNAL_SYSTEM", "line_start": 12, "rule": "SQL_CREATE_PROCEDURE"},
+        {"name": "CLAIMS.CLAIM_TRANS", "type": "TABLE", "line_start": 21, "rule": "SQL_MERGE"}
+      ]
+    },
+    "CLAIMMAP.bms": {
+      "category": "BMS",
+      "expected_components": [
+        {"name": "CLAIMMAP", "type": "MAP", "line_start": 5, "rule": "BMS_DFHMSD"},
+        {"name": "CLAIMS1", "type": "MAP", "line_start": 8, "rule": "BMS_DFHMDI"},
+        {"name": "UNNAMED", "type": "MAP", "line_start": 9, "rule": "BMS_DFHMDF"},
+        {"name": "CLMID", "type": "MAP", "line_start": 11, "rule": "BMS_DFHMDF"},
+        {"name": "CLMAMT", "type": "MAP", "line_start": 13, "rule": "BMS_DFHMDF"},
+        {"name": "UNNAMED", "type": "MAP", "line_start": 15, "rule": "BMS_DFHMDF"}
+      ]
+    },
+    "CLAIMS_IDCAMS.idcams": {
+      "category": "VSAM",
+      "expected_components": [
+        {"name": "CLAIMS.VSAM.CLAIMS", "type": "DATASET", "line_start": 2, "rule": "VSAM_DEFINE"}
+      ]
+    }
+  }
+}

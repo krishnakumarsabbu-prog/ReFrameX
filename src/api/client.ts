@@ -46,7 +46,6 @@ export interface Artifact {
   extension: string | null;
   category: string;
   size_bytes: number;
-  upload_timestamp: string;
   processing_status: string;
   sha256: string;
   parse_status: string;
@@ -86,6 +85,90 @@ export interface HealthStatus {
   status: string;
   version: string;
   metadata_dir_configured: boolean;
+}
+
+// ---- Analysis types ----
+
+export interface EvidenceRef {
+  artifact_id: string;
+  line_start: number;
+  line_end: number;
+  rule: string;
+  snippet?: string;
+}
+
+export interface Component {
+  id: string;
+  application_id: string;
+  name: string;
+  component_type: string;
+  technology: string;
+  source_artifact_id: string;
+  source_filename: string;
+  line_start: number;
+  line_end: number;
+  detected_properties: Record<string, string>;
+  evidence_class: string;
+  evidence_refs: EvidenceRef[];
+  warnings: string[];
+  parser_name: string;
+  parser_version: string;
+}
+
+export interface AnalyzeResponse {
+  run_id: string;
+  application_id: string;
+  artifacts_processed: number;
+  components_extracted: number;
+  warnings_count: number;
+  duration_ms: number;
+  status: string;
+}
+
+export interface AnalysisSummary {
+  application_id: string;
+  last_run_id: string | null;
+  last_run_at: string | null;
+  duration_ms: number | null;
+  artifacts_processed: number;
+  components_extracted: number;
+  warnings_count: number;
+  by_type: Record<string, number>;
+  by_technology: Record<string, number>;
+  by_evidence_class: Record<string, number>;
+  parser_versions: Record<string, string>;
+  status: string;
+}
+
+export interface ParserInfo {
+  name: string;
+  version: string;
+  capability: string;
+  supported_categories: string;
+}
+
+export interface ParserCoverageEntry {
+  artifact_id: string;
+  filename: string;
+  category: string;
+  support_level: string;
+  parser_name: string | null;
+  parser_version: string | null;
+  capability: string | null;
+  parse_status: string;
+  components_extracted: number;
+  warnings: number;
+  error: string | null;
+}
+
+export interface ParserCoverageReport {
+  total_artifacts: number;
+  by_capability: Record<string, number>;
+  by_parse_status: Record<string, number>;
+  by_category: Record<string, number>;
+  parsers: ParserInfo[];
+  entries: ParserCoverageEntry[];
+  unsupported_artifacts: ParserCoverageEntry[];
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -153,4 +236,16 @@ export const api = {
     request<ArtifactContent>(`/api/artifacts/${id}/content`),
   deleteArtifact: (id: string) =>
     request<{ deleted: boolean; id: string }>(`/api/artifacts/${id}`, { method: 'DELETE' }),
+
+  // Analysis
+  analyze: (appId: string) =>
+    request<AnalyzeResponse>(`/api/applications/${appId}/analyze`, { method: 'POST' }),
+  reanalyze: (appId: string) =>
+    request<AnalyzeResponse>(`/api/applications/${appId}/reanalyze`, { method: 'POST' }),
+  getComponents: (appId: string) =>
+    request<Component[]>(`/api/applications/${appId}/components`),
+  getAnalysisSummary: (appId: string) =>
+    request<AnalysisSummary>(`/api/applications/${appId}/analysis-summary`),
+  getParserCoverage: (appId: string) =>
+    request<ParserCoverageReport>(`/api/applications/${appId}/parser-coverage`),
 };

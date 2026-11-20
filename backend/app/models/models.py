@@ -53,3 +53,47 @@ class Artifact(Base):
     detection_reason = sa.Column(sa.Text, nullable=True)
 
     application = relationship("Application", back_populates="artifacts")
+
+
+class Component(Base):
+    """A normalized component extracted from an artifact by a parser."""
+    __tablename__ = "components"
+
+    id = sa.Column(sa.String(16), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = sa.Column(sa.String(512), nullable=False)
+    component_type = sa.Column(sa.String(50), nullable=False)
+    technology = sa.Column(sa.String(100), nullable=False, default="")
+    source_artifact_id = sa.Column(sa.String(36), sa.ForeignKey("artifacts.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_filename = sa.Column(sa.String(512), nullable=False, default="")
+    line_start = sa.Column(sa.Integer, nullable=False, default=0)
+    line_end = sa.Column(sa.Integer, nullable=False, default=0)
+    detected_properties = sa.Column(sa.Text, nullable=False, default="{}")
+    evidence_class = sa.Column(sa.String(50), nullable=False, default="Evidence-based")
+    evidence_refs = sa.Column(sa.Text, nullable=False, default="[]")
+    warnings = sa.Column(sa.Text, nullable=False, default="[]")
+    parser_name = sa.Column(sa.String(100), nullable=False, default="")
+    parser_version = sa.Column(sa.String(50), nullable=False, default="")
+    created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    application = relationship("Application", back_populates="components")
+    source_artifact = relationship("Artifact", backref="components")
+
+
+class AnalysisRun(Base):
+    """A single analysis run for an application."""
+    __tablename__ = "analysis_runs"
+
+    id = sa.Column(sa.String(36), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    started_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+    completed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+    duration_ms = sa.Column(sa.Integer, nullable=True)
+    artifacts_processed = sa.Column(sa.Integer, nullable=False, default=0)
+    components_extracted = sa.Column(sa.Integer, nullable=False, default=0)
+    warnings_count = sa.Column(sa.Integer, nullable=False, default=0)
+    parser_versions = sa.Column(sa.Text, nullable=False, default="{}")
+    status = sa.Column(sa.String(50), nullable=False, default="running")
+    summary = sa.Column(sa.Text, nullable=True)
+
+    application = relationship("Application", back_populates="analysis_runs")

@@ -1,0 +1,45 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. SORTCTL.
+       AUTHOR. REFRAMEX-SAMPLE.
+      * Program with COPY, GOTO, ALTER, continuation lines.
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT INPUT-FILE  ASSIGN TO INFILE
+               ORGANIZATION IS SEQUENTIAL.
+           SELECT OUTPUT-FILE ASSIGN TO OUTFIL
+               ORGANIZATION IS SEQUENTIAL.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  INPUT-FILE
+           RECORD CONTAINS 100 CHARACTERS.
+       01  INPUT-REC.
+           COPY INPREC.
+       FD  OUTPUT-FILE
+           RECORD CONTAINS 100 CHARACTERS.
+       WORKING-STORAGE SECTION.
+       01  WS-EOF          PIC X VALUE 'N'.
+       01  WS-CONT-MAX     PIC 9(5)V99 VALUE 1234567.89.
+       01  WS-LONG-NAME    PIC X(40) VALUE
+           'THIS IS A CONTINUED STRING VALUE THAT GOES ON'.
+       PROCEDURE DIVISION.
+       MAIN-PARA.
+           PERFORM INIT-PARA
+           PERFORM PROCESS-PARA
+           GO TO END-PARA.
+       INIT-PARA.
+           OPEN INPUT INPUT-FILE
+           OPEN OUTPUT OUTPUT-FILE.
+       PROCESS-PARA.
+           PERFORM UNTIL WS-EOF = 'Y'
+               READ INPUT-FILE
+                   AT END
+                       MOVE 'Y' TO WS-EOF
+                   NOT AT END
+                       WRITE OUTPUT-REC FROM INPUT-REC
+               END-READ
+           END-PERFORM.
+       END-PARA.
+           CLOSE INPUT-FILE
+           CLOSE OUTPUT-FILE
+           STOP RUN.

@@ -1,0 +1,17 @@
+* -------------------------------------------------------------
+* SAMPLE BMS MAP FOR REFRAMEX INGESTION TESTING
+* -------------------------------------------------------------
+         PRINT NOGEN
+CLAIMMAP DFHMSD TYPE=&SYSPARM,MODE=INOUT,LANG=COBOL,               *
+               DSATTS=(ATTIN,ATTOUT),STORAGE=AUTO,                 *
+               TIOAPFX=YES
+CLAIMS1  DFHMDI SIZE=(24,80),LINE=1,COLUMN=1,CTRL=FREEKB
+         DFHMDF POS=(1,30),ATTRB=(NORM,PROT),                       *
+               LENGTH=20,INITIAL='CLAIMS ENTRY SCREEN'
+CLMID    DFHMDF POS=(3,15),ATTRB=(NORM,UNPROT),                     *
+               LENGTH=8,INITIAL='________'
+CLMAMT   DFHMDF POS=(5,15),ATTRB=(NORM,UNPROT,IC),                  *
+               LENGTH=10,INITIAL='__________'
+         DFHMDF POS=(5,35),ATTRB=(NORM,PROT),LENGTH=10,             *
+               INITIAL='AMOUNT'
+         DFHMSD TYPE=FINAL
