@@ -125,12 +125,15 @@ class AssessmentRecord(Base):
     """A persisted assessment result for an application.
 
     Stores the full serialized assessment JSON so it can be retrieved without
-    recomputation. Each new assessment replaces the prior one for the application.
+    recomputation. Assessment history is preserved — each new assessment is a
+    new row with an incrementing version number, enabling before/after
+    comparison for the evidence-improvement workflow.
     """
     __tablename__ = "assessment_records"
 
     id = sa.Column(sa.String(36), primary_key=True)
     application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    version = sa.Column(sa.Integer, nullable=False, default=1)
     model_version = sa.Column(sa.String(50), nullable=False)
     ruleset_id = sa.Column(sa.String(100), nullable=False)
     ruleset_version = sa.Column(sa.String(50), nullable=False)
@@ -144,6 +147,7 @@ class AssessmentRecord(Base):
     duration_ms = sa.Column(sa.Integer, nullable=False, default=0)
     result_json = sa.Column(sa.Text, nullable=False, default="{}")
     human_reviewed = sa.Column(sa.Boolean, nullable=False, default=False)
+    is_current = sa.Column(sa.Boolean, nullable=False, default=True, index=True)
 
     application = relationship("Application")
 

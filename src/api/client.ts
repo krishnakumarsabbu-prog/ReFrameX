@@ -506,6 +506,154 @@ export interface UnknownsResponse {
   items: Finding[];
 }
 
+// ---- Phase 7: Reports, Comparison, History, Export ----
+
+export interface ReportSection {
+  [key: string]: any;
+}
+
+export interface Report {
+  report_metadata: {
+    generated_at: string;
+    application_id: string;
+    application_name: string;
+    assessment_record_id: string | null;
+    assessment_version: number | null;
+    report_format: string;
+    generator: string;
+  };
+  executive_summary: {
+    application_name: string;
+    has_assessment: boolean;
+    complexity_score: number | null;
+    complexity_classification: string;
+    confidence_score: number | null;
+    confidence_classification: string;
+    readiness_score: number | null;
+    readiness_classification: string;
+    artifact_count: number;
+    component_count: number;
+    dependency_count: number;
+    finding_count: number;
+    unknown_evidence_count: number;
+    high_severity_finding_count: number;
+    assessment_version: number | null;
+    computed_at: string | null;
+    note: string;
+  };
+  application_overview: ReportSection;
+  artifact_inventory: ReportSection;
+  component_inventory: ReportSection;
+  dependency_analysis: ReportSection;
+  domain_assessments: Record<string, {
+    label: string;
+    complexity: { score: number | null; classification: string; has_evidence: boolean };
+    confidence: { score: number | null; classification: string; has_evidence: boolean };
+    readiness: { score: number | null; classification: string; has_evidence: boolean };
+  }>;
+  migration_complexity: ReportSection;
+  assessment_confidence: ReportSection;
+  migration_readiness: ReportSection;
+  major_risks: ReportSection;
+  evidence_gaps: ReportSection;
+  component_recommendations: ReportSection;
+  refactoring_considerations: ReportSection;
+  prioritized_next_steps: ReportSection;
+  parser_coverage_and_accuracy: ReportSection;
+  automation_and_ai_statement: ReportSection;
+  limitations_and_assumptions: ReportSection;
+  versions: ReportSection;
+  reviewer_changes: ReportSection;
+  measured_metrics: ReportSection;
+  [key: string]: any;
+}
+
+export interface ComparisonAppSummary {
+  application_id: string;
+  application_name: string;
+  description: string | null;
+  business_domain: string | null;
+  has_assessment: boolean;
+  model_version: string;
+  ruleset_id: string;
+  ruleset_version: string;
+  complexity_score: number | null;
+  complexity_classification: string;
+  confidence_score: number | null;
+  confidence_classification: string;
+  readiness_score: number | null;
+  readiness_classification: string;
+  artifact_count: number;
+  artifact_by_category: Record<string, number>;
+  component_count: number;
+  component_by_type: Record<string, number>;
+  component_by_technology: Record<string, number>;
+  dependency_count: number;
+  dependency_by_type: Record<string, number>;
+  dependency_unresolved: number;
+  finding_count: number;
+  risk_by_severity: Record<string, number>;
+  risk_by_evidence_class: Record<string, number>;
+  missing_evidence_count: number;
+  missing_evidence_by_type: Record<string, number>;
+  domain_complexity: Record<string, {
+    label: string;
+    complexity_score: number | null;
+    confidence_score: number | null;
+    readiness_score: number | null;
+    has_evidence: boolean;
+  }>;
+  recommended_next_steps: string[];
+  computed_at: string | null;
+}
+
+export interface Comparison {
+  application_a: ComparisonAppSummary;
+  application_b: ComparisonAppSummary;
+  version_warning: {
+    type: string;
+    message: string;
+    [key: string]: unknown;
+  } | null;
+  deltas: {
+    artifact_count_delta: number;
+    component_count_delta: number;
+    dependency_count_delta: number;
+    finding_count_delta: number;
+    missing_evidence_delta: number;
+    complexity_score_delta: number | null;
+    confidence_score_delta: number | null;
+    readiness_score_delta: number | null;
+    domain_deltas: Record<string, {
+      label: string;
+      complexity_delta: number | null;
+      confidence_delta: number | null;
+      readiness_delta: number | null;
+    }>;
+  };
+  comparison_note: string;
+}
+
+export interface AssessmentHistoryItem {
+  id: string;
+  version: number;
+  application_id: string;
+  model_version: string;
+  ruleset_id: string;
+  ruleset_version: string;
+  complexity_score: number;
+  complexity_classification: string;
+  confidence_score: number;
+  confidence_classification: string;
+  readiness_score: number;
+  readiness_classification: string;
+  computed_at: string;
+  duration_ms: number;
+  human_reviewed: boolean;
+  is_current: boolean;
+  result: Record<string, unknown>;
+}
+
 // ---- Applications ----
 
 export const api = {
@@ -622,4 +770,28 @@ export const api = {
     const qs = findingId ? `?finding_id=${findingId}` : '';
     return request<ArtifactContent>(`/api/artifacts/${artifactId}/content${qs}`);
   },
+
+  // Phase 7: Reports, Comparison, History, Export
+  getReport: (appId: string) =>
+    request<Report>(`/api/applications/${appId}/report`),
+  compareApplications: (appA: string, appB: string) =>
+    request<Comparison>(`/api/applications/compare?app_a=${appA}&app_b=${appB}`),
+  getAssessmentHistory: (appId: string) =>
+    request<AssessmentHistoryItem[]>(`/api/applications/${appId}/assessment-history`),
+  exportReport: (appId: string, format: 'json' | 'html' = 'json') =>
+    fetch(`/api/applications/${appId}/export?format=${format}`).then(async (res) => {
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : `report.${format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }),
 };

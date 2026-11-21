@@ -478,3 +478,33 @@ class UnknownsOut(BaseModel):
     by_type: dict[str, int]
     items: list[FindingOut]
 
+
+# ---- Phase 7: Reports, Comparison, History, Export ----
+
+class AssessmentHistoryItemOut(BaseModel):
+    id: str
+    version: int
+    application_id: str
+    model_version: str
+    ruleset_id: str
+    ruleset_version: str
+    complexity_score: float
+    complexity_classification: str
+    confidence_score: float
+    confidence_classification: str
+    readiness_score: float
+    readiness_classification: str
+    computed_at: str
+    duration_ms: int
+    human_reviewed: bool
+    is_current: bool
+    result: dict
+
+
+class ComparisonOut(BaseModel):
+    application_a: dict
+    application_b: dict
+    version_warning: dict | None
+    deltas: dict
+    comparison_note: str
+

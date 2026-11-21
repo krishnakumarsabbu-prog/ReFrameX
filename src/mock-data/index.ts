@@ -29,6 +29,7 @@ export const railItems: RailItem[] = [
   { id: 'simulator', label: 'Impact Simulator', path: '/simulator', icon: 'FlaskConical' },
   { id: 'reports', label: 'Assessment Reports', path: '/reports', icon: 'FileText' },
   { id: 'compare', label: 'Application Comparison', path: '/compare', icon: 'Columns3' },
+  { id: 'evidence-improvement', label: 'Evidence Improvement', path: '/evidence-improvement', icon: 'History' },
   { id: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
 ];
 
@@ -161,15 +162,15 @@ export const moduleDescriptions: Record<string, { title: string; summary: string
   },
   reports: {
     title: 'Assessment Reports',
-    summary: 'Generate exportable assessment reports: complexity, confidence, readiness, evidence, and recommendations. Reviewer sign-off tracked separately.',
-    phase: 'Phase 6',
-    bullets: ['Report builder with section selection', 'Export to PDF and structured JSON', 'Reviewer annotations stored separately from machine findings'],
+    summary: 'Generate executive assessment reports with all 19 required sections. Export as structured JSON, printable HTML, or browser print-to-PDF.',
+    phase: 'Phase 7',
+    bullets: ['Report builder with section selection', 'Export to structured JSON and printable HTML', 'Reviewer annotations stored separately from machine findings'],
   },
   compare: {
     title: 'Application Comparison',
-    summary: 'Side-by-side comparison of applications across complexity, confidence, readiness, and domain scores. Prioritize migration sequencing.',
-    phase: 'Phase 6',
-    bullets: ['Multi-select applications for comparison', 'Radar and bar comparison across domains', 'Migration sequencing recommendation based on scores'],
+    summary: 'Side-by-side comparison of two assessed applications across complexity, confidence, readiness, domain scores, and risk distribution.',
+    phase: 'Phase 7',
+    bullets: ['Radar chart comparison across 8 domains', 'Version mismatch warnings when ruleset or model differ', 'Delta summary with computed differences'],
   },
   settings: {
     title: 'Settings',

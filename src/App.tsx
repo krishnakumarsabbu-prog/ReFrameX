@@ -12,6 +12,9 @@ import AssessmentPage from '@/pages/AssessmentPage';
 import EvidenceExplorerPage from '@/pages/EvidenceExplorerPage';
 import UnknownsAndRisksPage from '@/pages/UnknownsAndRisksPage';
 import RecommendationsPage from '@/pages/RecommendationsPage';
+import ReportsPage from '@/pages/ReportsPage';
+import ComparePage from '@/pages/ComparePage';
+import EvidenceImprovementPage from '@/pages/EvidenceImprovementPage';
 
 export default function App() {
   const { activeTab, setActiveTab } = useActiveTab();
@@ -30,8 +33,9 @@ export default function App() {
           <Route path="/risks" element={<UnknownsAndRisksPage />} />
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/simulator" element={<PlaceholderPage moduleId="simulator" />} />
-          <Route path="/reports" element={<PlaceholderPage moduleId="reports" />} />
-          <Route path="/compare" element={<PlaceholderPage moduleId="compare" />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/compare" element={<ComparePage />} />
+          <Route path="/evidence-improvement" element={<EvidenceImprovementPage />} />
           <Route path="/settings" element={<PlaceholderPage moduleId="settings" />} />
         </Routes>
       </AppLayout>
