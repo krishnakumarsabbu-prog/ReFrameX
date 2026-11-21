@@ -22,25 +22,25 @@ import {
 import type { EvidenceClass } from '@/types';
 
 const EVIDENCE_COLORS: Record<string, string> = {
-  'Evidence-based': '#4D8F86',
+  'Evidence-based': '#17866C',
   'Inferred': '#E0A238',
-  'Assumed': '#C99C6D',
+  'Assumed': '#7668AE',
   'Unknown': '#A89B94',
 };
 
 // Component type → icon + color for graph nodes
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; group: string }> = {
-  PROGRAM: { icon: <Code2 size={14} />, color: '#4D8F86', group: 'Programs' },
-  MODULE: { icon: <Layers size={14} />, color: '#547C7B', group: 'Programs' },
-  COPYBOOK: { icon: <FileSearch size={14} />, color: '#C99C6D', group: 'Programs' },
+  PROGRAM: { icon: <Code2 size={14} />, color: '#0D7490', group: 'Programs' },
+  MODULE: { icon: <Layers size={14} />, color: '#196F85', group: 'Programs' },
+  COPYBOOK: { icon: <FileSearch size={14} />, color: '#4C78A3', group: 'Programs' },
   TABLE: { icon: <Database size={14} />, color: '#E8A838', group: 'Data' },
   DATABASE: { icon: <Database size={14} />, color: '#E8A838', group: 'Data' },
-  FILE: { icon: <FileSearch size={14} />, color: '#D9C1A2', group: 'Data' },
-  DATASET: { icon: <Layers size={14} />, color: '#D9C1A2', group: 'Data' },
-  JOB: { icon: <Boxes size={14} />, color: '#A9784E', group: 'Batch Jobs' },
-  PROC: { icon: <Cpu size={14} />, color: '#A9784E', group: 'Batch Jobs' },
-  TRANSACTION: { icon: <Zap size={14} />, color: '#E88555', group: 'Transactions & Screens' },
-  MAP: { icon: <ScrollText size={14} />, color: '#E88555', group: 'Transactions & Screens' },
+  FILE: { icon: <FileSearch size={14} />, color: '#4B88A5', group: 'Data' },
+  DATASET: { icon: <Layers size={14} />, color: '#4B88A5', group: 'Data' },
+  JOB: { icon: <Boxes size={14} />, color: '#7668AE', group: 'Batch Jobs' },
+  PROC: { icon: <Cpu size={14} />, color: '#7668AE', group: 'Batch Jobs' },
+  TRANSACTION: { icon: <Zap size={14} />, color: '#1B88A5', group: 'Transactions & Screens' },
+  MAP: { icon: <ScrollText size={14} />, color: '#1B88A5', group: 'Transactions & Screens' },
   EXTERNAL_SYSTEM: { icon: <Network size={14} />, color: '#8A8A93', group: 'External Systems' },
   API: { icon: <Zap size={14} />, color: '#8A8A93', group: 'Integrations' },
   MQ: { icon: <Zap size={14} />, color: '#8A8A93', group: 'Integrations' },
@@ -148,13 +148,13 @@ function layoutNodes(nodes: GraphNode[], edges: GraphEdge[], selectedId: string 
         type: 'smoothstep',
         animated: isInf,
         style: {
-          stroke: isUnk ? '#A89B94' : isInf ? '#E0A238' : '#4D8F86',
+          stroke: isUnk ? '#A89B94' : isInf ? '#E0A238' : '#17866C',
           strokeWidth: 1.5,
           strokeDasharray: isUnk ? '2 4' : isInf ? '6 3' : undefined,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isUnk ? '#A89B94' : isInf ? '#E0A238' : '#4D8F86',
+          color: isUnk ? '#A89B94' : isInf ? '#E0A238' : '#17866C',
           width: 16,
           height: 16,
         },
@@ -197,7 +197,7 @@ function GlassNode({ data }: NodeProps) {
         {d.icon}
       </div>
       <div className="rf-node-text">
-        <div className="rf-node-label" style={{ color: d.isSelected ? '#fff' : '#1B1612' }}>
+        <div className="rf-node-label" style={{ color: d.isSelected ? '#fff' : '#14283A' }}>
           {d.label}
         </div>
         <div className="rf-node-meta" style={{ color: d.isSelected ? 'rgba(255,255,255,0.7)' : '#8A8A93' }}>

@@ -1,0 +1,1 @@
+import{j as a}from"./index-DArhlU6z.js";function d({children:o,className:e="",dense:s=!1,onClick:r}){const t=s?"dense-surface":"glass";return a.jsx("div",{onClick:r,className:`${t} rounded-bento transition-[box-shadow,transform,border-color] duration-200 ${r?"cursor-pointer hover:shadow-float hover:-translate-y-0.5":""} hover:border-white/70 ${e}`,children:o})}export{d as B};

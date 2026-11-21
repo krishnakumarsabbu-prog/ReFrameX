@@ -1,6 +1,10 @@
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as Icons from 'lucide-react';
+import {
+  AlertTriangle, Boxes, CheckCircle2, Columns3, Contrast, FileSearch,
+  FileText, FlaskConical, Gauge, GitBranch, ImagePlus, Lightbulb, ScrollText,
+  Settings, Sparkles, SwatchBook, type LucideIcon,
+} from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { useTheme, type WallpaperId } from '@/hooks/useTheme';
@@ -11,11 +15,25 @@ interface PlaceholderPageProps {
 }
 
 const wallpaperOptions: { id: WallpaperId; label: string; description: string; swatches: string[] }[] = [
-  { id: 'warm-studio', label: 'Warm Studio', description: 'Bronze, sand, and soft amber', swatches: ['#A9784E', '#E8D8C6', '#C99C6D'] },
-  { id: 'sand-dune', label: 'Sand Dune', description: 'Sunlit dune neutrals', swatches: ['#C99B6B', '#F0E2CA', '#D9C1A2'] },
-  { id: 'slate-dusk', label: 'Slate Dusk', description: 'Muted slate and evening taupe', swatches: ['#59524C', '#C6C0B9', '#547C7B'] },
-  { id: 'teal-mist', label: 'Teal Mist', description: 'Soft teal with warm stone', swatches: ['#4D8F86', '#D9D8CA', '#B89B6D'] },
+  { id: 'warm-studio', label: 'Signal Desk', description: 'Cool slate, clear cyan, and deep navy', swatches: ['#5B9DAE', '#E7EFF5', '#65AAA6'] },
+  { id: 'sand-dune', label: 'Paper Trail', description: 'Quiet green-grey with soft blue', swatches: ['#718F8B', '#EFF3F0', '#A9C3C4'] },
+  { id: 'slate-dusk', label: 'Slate Terminal', description: 'Cool steel and blue-grey', swatches: ['#557E9A', '#DCE5ED', '#5F9A9B'] },
+  { id: 'teal-mist', label: 'Blueprint Mist', description: 'Subtle teal with clean mist', swatches: ['#438F91', '#EAF3F5', '#8FBDBA'] },
 ];
+
+const moduleIcons: Record<string, LucideIcon> = {
+  applications: Boxes,
+  artifacts: FileSearch,
+  intelligence: Sparkles,
+  dependencies: GitBranch,
+  complexity: Gauge,
+  evidence: ScrollText,
+  risks: AlertTriangle,
+  recommendations: Lightbulb,
+  simulator: FlaskConical,
+  reports: FileText,
+  compare: Columns3,
+};
 
 export default function PlaceholderPage({ moduleId }: PlaceholderPageProps) {
   const navigate = useNavigate();
@@ -24,19 +42,7 @@ export default function PlaceholderPage({ moduleId }: PlaceholderPageProps) {
 
   if (moduleId === 'settings') return <SettingsPage />;
 
-  const iconName = moduleId === 'applications' ? 'Boxes' :
-    moduleId === 'artifacts' ? 'FileSearch' :
-    moduleId === 'intelligence' ? 'Sparkles' :
-    moduleId === 'dependencies' ? 'GitBranch' :
-    moduleId === 'complexity' ? 'Gauge' :
-    moduleId === 'evidence' ? 'ScrollText' :
-    moduleId === 'risks' ? 'AlertTriangle' :
-    moduleId === 'recommendations' ? 'Lightbulb' :
-    moduleId === 'simulator' ? 'FlaskConical' :
-    moduleId === 'reports' ? 'FileText' :
-    moduleId === 'compare' ? 'Columns3' : 'Circle';
-
-  const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[iconName] ?? Icons.Circle;
+  const Icon = moduleIcons[moduleId] ?? Boxes;
 
   return (
     <>
@@ -78,10 +84,10 @@ function SettingsPage() {
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Icons.SwatchBook size={18} className="text-accent" />
+                <SwatchBook size={18} className="text-accent" />
                 <h2 className="text-lg font-semibold text-ink">Appearance</h2>
               </div>
-              <p className="text-sm text-ink-muted max-w-xl leading-relaxed">Choose the calm spatial backdrop used behind the frosted interface. Your choice is stored only in this browser.</p>
+              <p className="text-sm text-ink-muted max-w-xl leading-relaxed">Choose a low-distraction slate and cyan backdrop for reviewing architecture, evidence, and migration risks. Your choice is stored only in this browser.</p>
             </div>
             <span className="px-2.5 py-1 rounded-pill bg-accent-soft text-accent text-xs font-medium">Local only</span>
           </div>
@@ -100,7 +106,7 @@ function SettingsPage() {
                     <div className="text-sm font-semibold text-ink">{option.label}</div>
                     <div className="text-xs text-ink-muted mt-1">{option.description}</div>
                   </div>
-                  {wallpaper === option.id && <Icons.CheckCircle2 size={18} className="text-accent shrink-0" />}
+                  {wallpaper === option.id && <CheckCircle2 size={18} className="text-accent shrink-0" />}
                 </div>
               </button>
             ))}
@@ -111,14 +117,14 @@ function SettingsPage() {
               className={`text-left rounded-tile p-4 border transition-[box-shadow,transform,border-color] duration-200 hover:-translate-y-0.5 ${wallpaper === 'custom' ? 'border-accent shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.22)]' : 'border-dashed border-white/60 hover:border-white'} bg-white/20`}
             >
               <div className="h-20 rounded-2xl mb-3 flex items-center justify-center bg-white/25 border border-white/30">
-                <Icons.ImagePlus size={24} className="text-ink-soft" />
+                <ImagePlus size={24} className="text-ink-soft" />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-ink">Use my own image</div>
                   <div className="text-xs text-ink-muted mt-1">Selected locally, never uploaded</div>
                 </div>
-                {wallpaper === 'custom' && <Icons.CheckCircle2 size={18} className="text-accent shrink-0" />}
+                {wallpaper === 'custom' && <CheckCircle2 size={18} className="text-accent shrink-0" />}
               </div>
             </button>
           </div>
@@ -127,7 +133,7 @@ function SettingsPage() {
 
         <section className="glass rounded-bento p-6 sm:p-8">
           <div className="flex items-center gap-2 mb-2">
-            <Icons.Contrast size={18} className="text-accent" />
+            <Contrast size={18} className="text-accent" />
             <h2 className="text-lg font-semibold text-ink">Accessibility</h2>
           </div>
           <p className="text-sm text-ink-muted leading-relaxed">Use the contrast control in the top bar to switch to solid surfaces and disable the ambient background shapes.</p>

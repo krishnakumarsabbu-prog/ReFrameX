@@ -1,8 +1,16 @@
 import { NavLink } from 'react-router-dom';
-import * as Icons from 'lucide-react';
-import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import {
+  AlertTriangle, Boxes, ChevronsLeft, ChevronsRight, Columns3, FileSearch,
+  FileText, FlaskConical, Gauge, GitBranch, History, LayoutDashboard,
+  Lightbulb, ScrollText, Settings, Sparkles, type LucideIcon,
+} from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { railItems } from '@/mock-data';
+
+const icons: Record<string, LucideIcon> = {
+  LayoutDashboard, Boxes, FileSearch, Sparkles, GitBranch, Gauge, ScrollText,
+  AlertTriangle, Lightbulb, FlaskConical, FileText, Columns3, History, Settings,
+};
 
 export default function GlassRail() {
   const { railExpanded, toggleRailExpanded } = useTheme();
@@ -15,7 +23,7 @@ export default function GlassRail() {
     >
       <div className="flex flex-col gap-1">
         {railItems.map((item) => {
-          const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[item.icon] ?? Icons.Circle;
+          const Icon = icons[item.icon] ?? LayoutDashboard;
           return (
             <NavLink
               key={item.id}

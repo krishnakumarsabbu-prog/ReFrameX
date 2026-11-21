@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Accent: warm coral-orange
+        // Accent: technical teal-blue
         accent: {
           DEFAULT: 'rgb(var(--accent-rgb))',
           soft: 'rgb(var(--accent-rgb) / 0.16)',
@@ -37,28 +37,28 @@ export default {
         },
         // Solid surfaces (reduce-transparency mode + dense views)
         solid: {
-          bg: '#F4F1EE',
+          bg: '#F2F6F9',
           panel: '#FFFFFF',
-          border: '#E2DED8',
+          border: '#D9E3EB',
         },
       },
       borderRadius: {
-        bento: '28px',
-        tile: '20px',
-        workspace: '44px',
+        bento: '24px',
+        tile: '16px',
+        workspace: '28px',
         pill: '999px',
       },
       backdropBlur: {
-        glass: '44px',
-        dense: '40px',
+        glass: '18px',
+        dense: '24px',
       },
       boxShadow: {
-        glass: '0 20px 50px rgba(40, 25, 10, 0.18), inset 0 1px 0 rgba(255,255,255,0.45)',
-        float: '0 24px 60px rgba(40, 25, 10, 0.22), inset 0 1px 0 rgba(255,255,255,0.55)',
+        glass: '0 14px 36px rgba(24, 52, 72, 0.1), inset 0 1px 0 rgba(255,255,255,0.8)',
+        float: '0 24px 60px rgba(24, 52, 72, 0.16), inset 0 1px 0 rgba(255,255,255,0.85)',
         ring: '0 0 0 1px rgb(255 255 255 / 0.6) inset',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['"JetBrains Mono"', '"SF Mono"', 'Menlo', 'monospace'],
       },
       spacing: {

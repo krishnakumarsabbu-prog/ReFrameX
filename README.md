@@ -14,8 +14,10 @@ ReframeX analyzes mainframe application artifacts and reports **Migration Comple
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+start_backend.bat
 ```
+
+Or run `uvicorn app.main:app --reload --port 8000` directly.
 API at http://127.0.0.1:8000 — Interactive docs at http://127.0.0.1:8000/docs
 
 ### Frontend
@@ -46,7 +48,7 @@ npm run build
 
 | Module | Purpose |
 |---|---|
-| Executive Dashboard | Portfolio overview with KPIs (demo data) |
+| Executive Dashboard | Portfolio overview with clearly labeled illustrative demo metrics |
 | Applications | CRUD for applications under assessment |
 | Artifact Explorer | Upload, browse, and view source artifacts |
 | Application Intelligence | Parser coverage, extracted components, evidence |
@@ -59,7 +61,7 @@ npm run build
 | Assessment Reports | 19-section executive report, JSON/HTML export |
 | Application Comparison | Side-by-side comparison of two applications |
 | Evidence Improvement | Assessment history timeline with before/after |
-| Settings | Wallpaper, reduce-transparency toggle |
+| Settings | Cool slate and cyan wallpapers, custom image, reduce-transparency toggle |
 
 ## API Endpoints
 

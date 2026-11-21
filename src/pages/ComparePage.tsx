@@ -206,14 +206,14 @@ export default function ComparePage() {
                   <Tooltip
                     contentStyle={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #D9C1A2', borderRadius: 8, fontSize: 12 }}
                   />
-                  <Radar name={comparison.application_a.application_name} dataKey="appA" stroke="#A9784E" fill="#A9784E" fillOpacity={0.3} />
-                  <Radar name={comparison.application_b.application_name} dataKey="appB" stroke="#4D8F86" fill="#4D8F86" fillOpacity={0.3} />
+                  <Radar name={comparison.application_a.application_name} dataKey="appA" stroke="#0D7490" fill="#0D7490" fillOpacity={0.3} />
+                  <Radar name={comparison.application_b.application_name} dataKey="appB" stroke="#7668AE" fill="#7668AE" fillOpacity={0.3} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
             <div className="flex items-center justify-center gap-6 mt-2">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#A9784E' }} />
+                <span className="w-3 h-3 rounded-full" style={{ background: '#0D7490' }} />
                 <span className="text-xs text-ink-muted">{comparison.application_a.application_name}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ function AppSummaryCard({ app, label }: { app: ComparisonAppSummary; label: stri
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: label === 'A' ? '#A9784E' : '#4D8F86' }}>{label}</span>
+            <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: label === 'A' ? '#0D7490' : '#7668AE' }}>{label}</span>
             <h3 className="text-sm font-semibold text-ink">{app.application_name}</h3>
           </div>
           {app.description && <p className="text-xs text-ink-muted mt-0.5">{app.description}</p>}

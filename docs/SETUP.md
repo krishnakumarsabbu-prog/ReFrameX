@@ -14,6 +14,14 @@ pip install -r requirements.txt
 
 ### Run the backend
 
+From the repository root on Windows:
+
+```bat
+backend\start_backend.bat
+```
+
+The script starts Uvicorn on `127.0.0.1:8000` with auto-reload. You can also run it directly:
+
 ```bash
 cd backend
 uvicorn app.main:app --reload --port 8000

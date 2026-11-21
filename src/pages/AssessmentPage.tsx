@@ -39,7 +39,7 @@ const IMPACT_LABELS: Record<string, { label: string; color: string }> = {
   positive: { label: 'Positive', color: '#5B9E6A' }, negative: { label: 'Negative', color: '#E88555' },
 };
 const CHART_TEXT = { fontSize: 11, fill: '#8A8A93' } as const;
-const TOOLTIP_STYLE = { background: 'rgba(255,255,255,0.95)', border: '1px solid #E2DED8', borderRadius: '12px', fontSize: '12px' } as const;
+const TOOLTIP_STYLE = { background: 'rgba(255,255,255,0.97)', border: '1px solid #D9E3EB', borderRadius: '12px', fontSize: '12px' } as const;
 
 type ScoreKind = keyof typeof SCORE_COLORS;
 const MEASURES: ScoreKind[] = ['complexity', 'confidence', 'readiness'];
@@ -646,7 +646,7 @@ function RuleWeightRow({ rule, value, onChange }: { rule: RuleInfo; value: numbe
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <input type="range" min={0} max={50} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-24 accent-[#C99C6D]" />
+        <input type="range" min={0} max={50} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-24 accent-[#0D7490]" />
         <span className={`text-xs font-mono w-7 text-right ${changed ? 'text-accent font-semibold' : 'text-ink-muted'}`}>{value}</span>
       </div>
     </div>
