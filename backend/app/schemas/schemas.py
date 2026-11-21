@@ -261,3 +261,116 @@ class DependencySummaryOut(BaseModel):
     circular_dependencies: int
     single_points: int
 
+
+# ---- Assessment (Phase 5) ----
+
+class RuleFiringOut(BaseModel):
+    rule_id: str
+    domain: str
+    measure: str
+    description: str
+    weight: float
+    impact: str
+    severity: str
+    explanation: str
+    recommendation: str | None
+    upgrade_guidance: str | None
+    evidence_refs: list[dict]
+    points: float
+
+
+class DomainScoreOut(BaseModel):
+    score: float | None
+    classification: str
+    has_evidence: bool
+    fired_rule_count: int
+    positive_factors: list[str]
+    negative_factors: list[str]
+    not_evidenced_notes: list[str]
+
+
+class AssessmentOut(BaseModel):
+    application_id: str
+    model_version: str
+    ruleset_id: str
+    ruleset_version: str
+    computed_at: str
+    complexity_score: float
+    complexity_classification: str
+    confidence_score: float
+    confidence_classification: str
+    readiness_score: float
+    readiness_classification: str
+    domain_scores: dict[str, dict[str, DomainScoreOut]]
+    fired_rules: list[RuleFiringOut]
+    positive_factors: list[str]
+    negative_factors: list[str]
+    missing_information: list[str]
+    assessment_limitations: list[str]
+    recommended_next_steps: list[str]
+    evidence_refs: list[dict]
+    duration_ms: int
+
+
+class DomainBreakdownOut(BaseModel):
+    label: str
+    scores: dict[str, dict]
+
+
+class RuleInfoOut(BaseModel):
+    rule_id: str
+    domain: str
+    measure: str
+    description: str
+    detection_condition: str
+    weight: float
+    impact: str
+    severity: str
+    evidence_requirement: str
+    explanation: str
+    recommendation: str | None
+    upgrade_guidance: str | None
+
+
+class RulesetInfoOut(BaseModel):
+    ruleset_id: str
+    version: str
+    effective_date: str
+    owner: str
+    changelog: list[dict]
+    domain_weights: dict[str, float]
+    thresholds: dict[str, dict[str, int]]
+    model_version: str
+    rule_count: int
+
+
+class RulesOut(BaseModel):
+    ruleset_info: RulesetInfoOut
+    rules: list[RuleInfoOut]
+
+
+class WhatIfRequest(BaseModel):
+    weight_overrides: dict[str, float] = Field(default_factory=dict)
+    human_reviewed: bool = False
+
+
+class WhatIfResponse(BaseModel):
+    before: dict
+    after: dict
+    weight_overrides: dict[str, float]
+    human_reviewed: bool
+
+
+class ComponentAssessmentOut(BaseModel):
+    component_id: str
+    component_name: str
+    component_type: str
+    technology: str
+    complexity_score: float
+    complexity_classification: str
+    raw_score: float
+    fired_rules: list[dict]
+    evidence_refs: list[dict]
+    model_version: str
+    ruleset_version: str
+

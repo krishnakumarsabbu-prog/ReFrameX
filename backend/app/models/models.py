@@ -76,7 +76,7 @@ class Component(Base):
     parser_version = sa.Column(sa.String(50), nullable=False, default="")
     created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
 
-    application = relationship("Application", back_populates="components")
+    application = relationship("Application")
     source_artifact = relationship("Artifact", backref="components")
 
 
@@ -118,4 +118,31 @@ class AnalysisRun(Base):
     status = sa.Column(sa.String(50), nullable=False, default="running")
     summary = sa.Column(sa.Text, nullable=True)
 
-    application = relationship("Application", back_populates="analysis_runs")
+    application = relationship("Application")
+
+
+class AssessmentRecord(Base):
+    """A persisted assessment result for an application.
+
+    Stores the full serialized assessment JSON so it can be retrieved without
+    recomputation. Each new assessment replaces the prior one for the application.
+    """
+    __tablename__ = "assessment_records"
+
+    id = sa.Column(sa.String(36), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    model_version = sa.Column(sa.String(50), nullable=False)
+    ruleset_id = sa.Column(sa.String(100), nullable=False)
+    ruleset_version = sa.Column(sa.String(50), nullable=False)
+    complexity_score = sa.Column(sa.Float, nullable=False, default=0.0)
+    complexity_classification = sa.Column(sa.String(50), nullable=False, default="Low")
+    confidence_score = sa.Column(sa.Float, nullable=False, default=0.0)
+    confidence_classification = sa.Column(sa.String(50), nullable=False, default="Low")
+    readiness_score = sa.Column(sa.Float, nullable=False, default=0.0)
+    readiness_classification = sa.Column(sa.String(50), nullable=False, default="Not Ready")
+    computed_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+    duration_ms = sa.Column(sa.Integer, nullable=False, default=0)
+    result_json = sa.Column(sa.Text, nullable=False, default="{}")
+    human_reviewed = sa.Column(sa.Boolean, nullable=False, default=False)
+
+    application = relationship("Application")

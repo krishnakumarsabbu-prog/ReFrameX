@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReframeX Ruleset",
+  "description": "Validation schema for ReframeX scoring rulesets",
+  "type": "object",
+  "required": ["ruleset_id", "version", "effective_date", "owner", "domain_weights", "thresholds", "rules"],
+  "properties": {
+    "ruleset_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "effective_date": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1 },
+    "changelog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["version", "date", "author", "summary"],
+        "properties": {
+          "version": { "type": "string" },
+          "date": { "type": "string" },
+          "author": { "type": "string" },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "domain_weights": {
+      "type": "object",
+      "description": "Weights for the 8 official domains — must sum to approximately 1.0",
+      "required": [
+        "application_business_logic",
+        "data_structures",
+        "database_persistence",
+        "jobs_batch_orchestration",
+        "online_transactions_ui",
+        "integration_external_dependencies",
+        "security_controls",
+        "operational_nonfunctional"
+      ],
+      "properties": {
+        "application_business_logic": { "type": "number", "minimum": 0, "maximum": 1 },
+        "data_structures": { "type": "number", "minimum": 0, "maximum": 1 },
+        "database_persistence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "jobs_batch_orchestration": { "type": "number", "minimum": 0, "maximum": 1 },
+        "online_transactions_ui": { "type": "number", "minimum": 0, "maximum": 1 },
+        "integration_external_dependencies": { "type": "number", "minimum": 0, "maximum": 1 },
+        "security_controls": { "type": "number", "minimum": 0, "maximum": 1 },
+        "operational_nonfunctional": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": ["complexity", "confidence", "readiness"],
+      "properties": {
+        "complexity": {
+          "type": "object",
+          "required": ["low", "medium"],
+          "properties": {
+            "low": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "medium": { "type": "integer", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "confidence": {
+          "type": "object",
+          "required": ["low", "medium"],
+          "properties": {
+            "low": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "medium": { "type": "integer", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "readiness": {
+          "type": "object",
+          "required": ["low", "medium"],
+          "properties": {
+            "low": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "medium": { "type": "integer", "minimum": 0, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "domain", "measure", "description", "detection_condition", "weight", "impact", "severity", "evidence_requirement", "explanation"],
+        "properties": {
+          "rule_id": { "type": "string", "minLength": 1 },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "application_business_logic",
+              "data_structures",
+              "database_persistence",
+              "jobs_batch_orchestration",
+              "online_transactions_ui",
+              "integration_external_dependencies",
+              "security_controls",
+              "operational_nonfunctional"
+            ]
+          },
+          "measure": {
+            "type": "string",
+            "enum": ["complexity", "confidence", "readiness"]
+          },
+          "description": { "type": "string", "minLength": 1 },
+          "detection_condition": { "type": "string", "minLength": 1 },
+          "weight": { "type": "number" },
+          "impact": { "type": "string", "enum": ["positive", "negative"] },
+          "severity": { "type": "string", "enum": ["high", "medium", "low", "info"] },
+          "evidence_requirement": { "type": "string", "minLength": 1 },
+          "explanation": { "type": "string", "minLength": 1 },
+          "recommendation": { "type": ["string", "null"] },
+          "upgrade_guidance": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

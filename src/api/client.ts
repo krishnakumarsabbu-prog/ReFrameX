@@ -277,6 +277,124 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+
+// ---- Assessment types (Phase 5) ----
+
+export interface RuleFiring {
+  rule_id: string;
+  domain: string;
+  measure: string;
+  description: string;
+  weight: number;
+  impact: string;
+  severity: string;
+  explanation: string;
+  recommendation: string | null;
+  upgrade_guidance: string | null;
+  evidence_refs: Array<{ artifact_id: string; line_start: number; line_end: number; rule: string; snippet?: string }>;
+  points: number;
+}
+
+export interface DomainScore {
+  score: number | null;
+  classification: string;
+  has_evidence: boolean;
+  fired_rule_count: number;
+  positive_factors: string[];
+  negative_factors: string[];
+  not_evidenced_notes: string[];
+}
+
+export interface Assessment {
+  application_id: string;
+  model_version: string;
+  ruleset_id: string;
+  ruleset_version: string;
+  computed_at: string;
+  complexity_score: number;
+  complexity_classification: string;
+  confidence_score: number;
+  confidence_classification: string;
+  readiness_score: number;
+  readiness_classification: string;
+  domain_scores: Record<string, Record<string, DomainScore>>;
+  fired_rules: RuleFiring[];
+  positive_factors: string[];
+  negative_factors: string[];
+  missing_information: string[];
+  assessment_limitations: string[];
+  recommended_next_steps: string[];
+  evidence_refs: Array<{ artifact_id: string; line_start: number; line_end: number; rule: string; snippet?: string }>;
+  duration_ms: number;
+}
+
+export interface DomainBreakdown {
+  label: string;
+  scores: Record<string, {
+    score: number | null;
+    classification: string;
+    has_evidence: boolean;
+    fired_rules: RuleFiring[];
+    positive_factors: string[];
+    negative_factors: string[];
+    evidence_refs: Array<{ artifact_id: string; line_start: number; line_end: number; rule: string; snippet?: string }>;
+    not_evidenced_notes: string[];
+  }>;
+}
+
+export interface RuleInfo {
+  rule_id: string;
+  domain: string;
+  measure: string;
+  description: string;
+  detection_condition: string;
+  weight: number;
+  impact: string;
+  severity: string;
+  evidence_requirement: string;
+  explanation: string;
+  recommendation: string | null;
+  upgrade_guidance: string | null;
+}
+
+export interface RulesetInfo {
+  ruleset_id: string;
+  version: string;
+  effective_date: string;
+  owner: string;
+  changelog: Array<{ version: string; date: string; author: string; summary: string }>;
+  domain_weights: Record<string, number>;
+  thresholds: Record<string, { low: number; medium: number }>;
+  model_version: string;
+  rule_count: number;
+}
+
+export interface RulesResponse {
+  ruleset_info: RulesetInfo;
+  rules: RuleInfo[];
+}
+
+export interface WhatIfResponse {
+  before: Assessment;
+  after: Assessment;
+  weight_overrides: Record<string, number>;
+  human_reviewed: boolean;
+}
+
+export interface ComponentAssessment {
+  component_id: string;
+  component_name: string;
+  component_type: string;
+  technology: string;
+  complexity_score: number;
+  complexity_classification: string;
+  raw_score: number;
+  fired_rules: RuleFiring[];
+  evidence_refs: Array<{ artifact_id: string; line_start: number; line_end: number; rule: string; snippet?: string }>;
+  model_version: string;
+  ruleset_version: string;
+}
+
 // ---- Applications ----
 
 export const api = {
@@ -349,4 +467,21 @@ export const api = {
     request<Dependency[]>(`/api/components/${componentId}/dependencies`),
   getComponentImpact: (componentId: string) =>
     request<ComponentImpact>(`/api/components/${componentId}/impact`),
+
+  // Assessment
+  runAssessment: (appId: string) =>
+    request<Assessment>(`/api/applications/${appId}/assess`, { method: 'POST' }),
+  getAssessment: (appId: string) =>
+    request<Assessment>(`/api/applications/${appId}/assessment`),
+  getDomainBreakdown: (appId: string) =>
+    request<Record<string, DomainBreakdown>>(`/api/applications/${appId}/assessment/domains`),
+  getRules: () =>
+    request<RulesResponse>('/api/assessment/rules'),
+  runWhatIf: (appId: string, overrides: Record<string, number>, humanReviewed = false) =>
+    request<WhatIfResponse>(`/api/applications/${appId}/assess/what-if`, {
+      method: 'POST',
+      body: JSON.stringify({ weight_overrides: overrides, human_reviewed: humanReviewed }),
+    }),
+  getComponentAssessment: (componentId: string) =>
+    request<ComponentAssessment>(`/api/components/${componentId}/assessment`),
 };

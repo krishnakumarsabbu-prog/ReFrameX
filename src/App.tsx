@@ -8,6 +8,7 @@ import ArtifactsPage from '@/pages/ArtifactsPage';
 import IntelligencePage from '@/pages/IntelligencePage';
 import DependenciesPage from '@/pages/DependenciesPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
+import AssessmentPage from '@/pages/AssessmentPage';
 
 export default function App() {
   const { activeTab, setActiveTab } = useActiveTab();
@@ -21,7 +22,7 @@ export default function App() {
           <Route path="/artifacts" element={<ArtifactsPage />} />
           <Route path="/intelligence" element={<IntelligencePage />} />
           <Route path="/dependencies" element={<DependenciesPage />} />
-          <Route path="/complexity" element={<PlaceholderPage moduleId="complexity" />} />
+          <Route path="/complexity" element={<AssessmentPage />} />
           <Route path="/evidence" element={<PlaceholderPage moduleId="evidence" />} />
           <Route path="/risks" element={<PlaceholderPage moduleId="risks" />} />
           <Route path="/recommendations" element={<PlaceholderPage moduleId="recommendations" />} />
