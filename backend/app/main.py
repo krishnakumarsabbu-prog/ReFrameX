@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.database.database import init_db
-from app.api import applications, artifacts, health, analysis
+from app.api import applications, artifacts, health, analysis, dependencies
 
 
 app = FastAPI(
@@ -34,3 +34,4 @@ app.include_router(health.router)
 app.include_router(applications.router)
 app.include_router(artifacts.router)
 app.include_router(analysis.router)
+app.include_router(dependencies.router)

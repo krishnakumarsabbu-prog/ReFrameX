@@ -126,7 +126,7 @@ export const moduleDescriptions: Record<string, { title: string; summary: string
   dependencies: {
     title: 'Dependency Intelligence',
     summary: 'Interactive dependency graph showing inter-component and inter-application relationships. Identify coupling hotspots and blast radius.',
-    phase: 'Phase 3',
+    phase: 'Phase 4',
     bullets: ['React Flow graph with directional edges', 'Coupling analysis and circular dependency detection', 'Blast-radius simulation for targeted refactoring'],
   },
   complexity: {

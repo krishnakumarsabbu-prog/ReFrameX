@@ -6,6 +6,7 @@ import Dashboard from '@/pages/Dashboard';
 import ApplicationsPage from '@/pages/ApplicationsPage';
 import ArtifactsPage from '@/pages/ArtifactsPage';
 import IntelligencePage from '@/pages/IntelligencePage';
+import DependenciesPage from '@/pages/DependenciesPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 
 export default function App() {
@@ -19,7 +20,7 @@ export default function App() {
           <Route path="/applications" element={<ApplicationsPage />} />
           <Route path="/artifacts" element={<ArtifactsPage />} />
           <Route path="/intelligence" element={<IntelligencePage />} />
-          <Route path="/dependencies" element={<PlaceholderPage moduleId="dependencies" />} />
+          <Route path="/dependencies" element={<DependenciesPage />} />
           <Route path="/complexity" element={<PlaceholderPage moduleId="complexity" />} />
           <Route path="/evidence" element={<PlaceholderPage moduleId="evidence" />} />
           <Route path="/risks" element={<PlaceholderPage moduleId="risks" />} />

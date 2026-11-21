@@ -80,6 +80,28 @@ class Component(Base):
     source_artifact = relationship("Artifact", backref="components")
 
 
+class Dependency(Base):
+    """A discovered relationship between two components within an application."""
+    __tablename__ = "dependencies"
+
+    id = sa.Column(sa.String(16), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_component_id = sa.Column(sa.String(16), sa.ForeignKey("components.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_component_id = sa.Column(sa.String(16), sa.ForeignKey("components.id", ondelete="CASCADE"), nullable=False, index=True)
+    relationship_type = sa.Column(sa.String(100), nullable=False)
+    detection_method = sa.Column(sa.String(100), nullable=False, default="static_extraction")
+    evidence_class = sa.Column(sa.String(50), nullable=False, default="Evidence-based")
+    source_artifact_id = sa.Column(sa.String(36), sa.ForeignKey("artifacts.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_line_number = sa.Column(sa.Integer, nullable=False, default=0)
+    evidence_ref = sa.Column(sa.Text, nullable=False, default="{}")
+    description = sa.Column(sa.Text, nullable=True)
+    created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    source_component = relationship("Component", foreign_keys=[source_component_id])
+    target_component = relationship("Component", foreign_keys=[target_component_id])
+    source_artifact = relationship("Artifact")
+
+
 class AnalysisRun(Base):
     """A single analysis run for an application."""
     __tablename__ = "analysis_runs"

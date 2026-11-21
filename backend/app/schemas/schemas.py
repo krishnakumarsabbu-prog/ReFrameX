@@ -181,3 +181,83 @@ class AnalyzeResponse(BaseModel):
     duration_ms: int
     status: str
 
+
+# ---- Dependency ----
+
+class DependencyOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    application_id: str
+    source_component_id: str
+    target_component_id: str
+    relationship_type: str
+    detection_method: str
+    evidence_class: str
+    source_artifact_id: str
+    source_line_number: int
+    evidence_ref: dict
+    description: str | None
+
+
+class GraphNodeOut(BaseModel):
+    id: str
+    name: str
+    component_type: str
+    technology: str
+    evidence_class: str
+    source_filename: str
+    source_artifact_id: str
+    line_start: int
+    line_end: int
+
+
+class GraphEdgeOut(BaseModel):
+    id: str
+    source: str
+    target: str
+    relationship_type: str
+    evidence_class: str
+    detection_method: str
+    source_line_number: int
+    description: str | None
+
+
+class GraphOut(BaseModel):
+    application_id: str
+    nodes: list[GraphNodeOut]
+    edges: list[GraphEdgeOut]
+    truncated: bool
+    total_nodes: int
+    total_edges: int
+
+
+class ComponentImpactOut(BaseModel):
+    component_id: str
+    component_name: str
+    component_type: str
+    direct_dependencies: int
+    upstream_count: int
+    downstream_count: int
+    indirect_upstream: int
+    indirect_downstream: int
+    shared_components: int
+    dependency_depth: int
+    circular: bool
+    circular_paths: list[list[str]]
+    single_point_of_dependency: bool
+    incoming: list[DependencyOut]
+    outgoing: list[DependencyOut]
+    connected_components: list[dict]
+    associated_artifacts: list[str]
+    risk_indicators: list[str]
+
+
+class DependencySummaryOut(BaseModel):
+    application_id: str
+    total_dependencies: int
+    by_relationship_type: dict[str, int]
+    by_evidence_class: dict[str, int]
+    unresolved_targets: int
+    circular_dependencies: int
+    single_points: int
+

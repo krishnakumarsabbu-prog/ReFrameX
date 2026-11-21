@@ -171,6 +171,91 @@ export interface ParserCoverageReport {
   unsupported_artifacts: ParserCoverageEntry[];
 }
 
+// ---- Dependency types ----
+
+export interface Dependency {
+  id: string;
+  application_id: string;
+  source_component_id: string;
+  target_component_id: string;
+  relationship_type: string;
+  detection_method: string;
+  evidence_class: string;
+  source_artifact_id: string;
+  source_line_number: number;
+  evidence_ref: {
+    artifact_id: string;
+    line_start: number;
+    line_end: number;
+    rule: string;
+    snippet: string;
+  };
+  description: string | null;
+}
+
+export interface GraphNode {
+  id: string;
+  name: string;
+  component_type: string;
+  technology: string;
+  evidence_class: string;
+  source_filename: string;
+  source_artifact_id: string;
+  line_start: number;
+  line_end: number;
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relationship_type: string;
+  evidence_class: string;
+  detection_method: string;
+  source_line_number: number;
+  description: string | null;
+}
+
+export interface GraphData {
+  application_id: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+  total_nodes: number;
+  total_edges: number;
+}
+
+export interface DependencySummary {
+  application_id: string;
+  total_dependencies: number;
+  by_relationship_type: Record<string, number>;
+  by_evidence_class: Record<string, number>;
+  unresolved_targets: number;
+  circular_dependencies: number;
+  single_points: number;
+}
+
+export interface ComponentImpact {
+  component_id: string;
+  component_name: string;
+  component_type: string;
+  direct_dependencies: number;
+  upstream_count: number;
+  downstream_count: number;
+  indirect_upstream: number;
+  indirect_downstream: number;
+  shared_components: number;
+  dependency_depth: number;
+  circular: boolean;
+  circular_paths: string[][];
+  single_point_of_dependency: boolean;
+  incoming: Dependency[];
+  outgoing: Dependency[];
+  connected_components: { id: string }[];
+  associated_artifacts: string[];
+  risk_indicators: string[];
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...options,
@@ -248,4 +333,20 @@ export const api = {
     request<AnalysisSummary>(`/api/applications/${appId}/analysis-summary`),
   getParserCoverage: (appId: string) =>
     request<ParserCoverageReport>(`/api/applications/${appId}/parser-coverage`),
+
+  // Dependencies
+  discoverDependencies: (appId: string) =>
+    request<{ dependencies_discovered: number; application_id: string }>(
+      `/api/applications/${appId}/discover-dependencies`, { method: 'POST' }
+    ),
+  getDependencies: (appId: string) =>
+    request<Dependency[]>(`/api/applications/${appId}/dependencies`),
+  getDependencySummary: (appId: string) =>
+    request<DependencySummary>(`/api/applications/${appId}/dependencies/summary`),
+  getGraph: (appId: string) =>
+    request<GraphData>(`/api/applications/${appId}/graph`),
+  getComponentDependencies: (componentId: string) =>
+    request<Dependency[]>(`/api/components/${componentId}/dependencies`),
+  getComponentImpact: (componentId: string) =>
+    request<ComponentImpact>(`/api/components/${componentId}/impact`),
 };
