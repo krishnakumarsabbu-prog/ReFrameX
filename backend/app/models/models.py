@@ -188,6 +188,28 @@ class Finding(Base):
     review_actions = relationship("ReviewAction", back_populates="finding", cascade="all, delete-orphan", order_by="ReviewAction.created_at")
 
 
+class SimulationScenario(Base):
+    """A persisted refactoring impact simulation scenario (Phase 8).
+
+    Stores the input assumptions and the computed impact + scenario analysis
+    so the architect can recall and compare scenarios. Scenarios are
+    hypothetical planning artifacts — they never modify source code.
+    """
+    __tablename__ = "simulation_scenarios"
+
+    id = sa.Column(sa.String(36), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    component_id = sa.Column(sa.String(16), sa.ForeignKey("components.id", ondelete="CASCADE"), nullable=False, index=True)
+    scenario_type = sa.Column(sa.String(30), nullable=False)  # extract_service | refactor_in_place | retain_mainframe
+    input_assumptions = sa.Column(sa.Text, nullable=False, default="{}")
+    impact_json = sa.Column(sa.Text, nullable=False, default="{}")
+    scenario_json = sa.Column(sa.Text, nullable=False, default="{}")
+    created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    application = relationship("Application")
+    component = relationship("Component", foreign_keys=[component_id])
+
+
 class ReviewAction(Base):
     """A reviewer action on a finding. Stored separately from machine findings.
 

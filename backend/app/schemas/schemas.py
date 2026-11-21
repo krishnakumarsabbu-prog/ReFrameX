@@ -508,3 +508,51 @@ class ComparisonOut(BaseModel):
     deltas: dict
     comparison_note: str
 
+
+# ---- Phase 8: Refactoring Impact Simulator ----
+
+class SimulateRequest(BaseModel):
+    component_id: str
+    scenario_type: str = Field(..., description="extract_service | refactor_in_place | retain_mainframe")
+    input_assumptions: dict = Field(default_factory=dict)
+
+
+class SimulationSummaryOut(BaseModel):
+    simulation_id: str
+    application_id: str
+    component_id: str
+    component_name: str
+    component_type: str
+    scenario_type: str
+    scenario_label: str
+    input_assumptions: dict
+    created_at: str | None
+
+
+class SimulationDetailOut(BaseModel):
+    simulation_id: str
+    application_id: str
+    component_id: str
+    component_name: str
+    component_type: str
+    scenario_type: str
+    scenario_label: str
+    input_assumptions: dict
+    impact: dict
+    scenario: dict
+    created_at: str | None
+
+
+class SimulateResponseOut(BaseModel):
+    simulation_id: str
+    application_id: str
+    component_id: str
+    component_name: str
+    component_type: str
+    scenario_type: str
+    scenario_label: str
+    input_assumptions: dict
+    impact: dict
+    scenario: dict
+    created_at: str | None
+

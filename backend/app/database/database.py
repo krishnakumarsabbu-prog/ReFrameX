@@ -44,6 +44,8 @@ def _auto_migrate() -> None:
                 conn.execute(text("ALTER TABLE assessment_records ADD COLUMN is_current BOOLEAN DEFAULT 1"))
             conn.commit()
 
+    # Phase 8: simulation_scenarios table created via Base.metadata.create_all
+
 
 def get_db():
     """FastAPI dependency: yield a session, close it after."""

@@ -654,6 +654,164 @@ export interface AssessmentHistoryItem {
   result: Record<string, unknown>;
 }
 
+// ---- Phase 8: Refactoring Impact Simulator ----
+
+export interface SimulateRequest {
+  component_id: string;
+  scenario_type: 'extract_service' | 'refactor_in_place' | 'retain_mainframe';
+  input_assumptions?: Record<string, unknown>;
+}
+
+export interface ImpactPathNode {
+  component_id: string;
+  name: string;
+  component_type: string;
+}
+
+export interface ImpactPath {
+  path: ImpactPathNode[];
+  length: number;
+}
+
+export interface ImpactResource {
+  component_id: string;
+  name: string;
+  component_type: string;
+  technology: string;
+  evidence_class?: string;
+  relationship_type: string;
+}
+
+export interface ImpactJob {
+  component_id: string;
+  name: string;
+  technology: string;
+  evidence_class: string;
+}
+
+export interface ImpactTransactionConcern {
+  component_id: string;
+  name: string;
+  component_type: string;
+  technology: string;
+  relationship_type: string;
+  evidence_class: string;
+  concern: string;
+}
+
+export interface ImpactUnresolvedDep {
+  dependency_id: string;
+  target_name: string;
+  target_component_id: string;
+  relationship_type: string;
+  evidence_class: string;
+  description: string;
+}
+
+export interface ImpactEvidenceGap {
+  finding_id: string;
+  title: string;
+  evidence_class: string;
+  detection_rule: string;
+  explanation: string;
+  source_filename: string;
+}
+
+export interface SimulationImpact {
+  component_id: string;
+  component_name: string;
+  component_type: string;
+  technology: string;
+  evidence_class: string;
+  source_filename: string;
+  source_artifact_id: string;
+  line_start: number;
+  line_end: number;
+  complexity_classification: string;
+  confidence_classification: string;
+  readiness_classification: string;
+  directly_impacted: number;
+  indirectly_impacted: number;
+  potential_impact_requiring_validation: number;
+  shared_data_dependencies: ImpactResource[];
+  connected_jobs: ImpactJob[];
+  database_dependencies: ImpactResource[];
+  external_interfaces: ImpactResource[];
+  possible_transaction_boundary_concerns: ImpactTransactionConcern[];
+  unresolved_dependencies: ImpactUnresolvedDep[];
+  evidence_gaps: ImpactEvidenceGap[];
+  upstream_paths: ImpactPath[];
+  downstream_paths: ImpactPath[];
+  upstream_count: number;
+  downstream_count: number;
+  indirect_upstream: number;
+  indirect_downstream: number;
+  circular: boolean;
+  circular_paths: string[][];
+  single_point_of_dependency: boolean;
+  graph_connectivity_note: string;
+}
+
+export interface ScenarioCurrentState {
+  component_type: string;
+  technology: string;
+  complexity_classification: string;
+  confidence_classification: string;
+  readiness_classification: string;
+  direct_dependencies: number;
+  upstream_count: number;
+  downstream_count: number;
+  evidence_class: string;
+  circular: boolean;
+  single_point_of_dependency: boolean;
+}
+
+export interface ScenarioAnalysis {
+  scenario_type: string;
+  current_state: ScenarioCurrentState;
+  disclaimer: string;
+  evidence_classification: string;
+  evidence_classification_note: string;
+  potential_benefits: string[];
+  technical_challenges: string[];
+  dependencies_to_resolve: string[];
+  risk_factors: string[];
+  missing_evidence: string[];
+  prerequisites: string[];
+  specialist_validation_required: string[];
+}
+
+export interface SimulateResponse {
+  simulation_id: string;
+  application_id: string;
+  component_id: string;
+  component_name: string;
+  component_type: string;
+  scenario_type: string;
+  scenario_label: string;
+  input_assumptions: Record<string, unknown>;
+  impact: SimulationImpact;
+  scenario: ScenarioAnalysis;
+  created_at: string | null;
+}
+
+export interface SimulationSummary {
+  simulation_id: string;
+  application_id: string;
+  component_id: string;
+  component_name: string;
+  component_type: string;
+  scenario_type: string;
+  scenario_label: string;
+  input_assumptions: Record<string, unknown>;
+  created_at: string | null;
+}
+
+export interface SimulationDetail extends SimulationSummary {
+  impact: SimulationImpact;
+  scenario: ScenarioAnalysis;
+}
+
 // ---- Applications ----
 
 export const api = {
@@ -794,4 +952,17 @@ export const api = {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }),
+
+  // Phase 8: Refactoring Impact Simulator
+  getComponentImpactExtended: (appId: string, componentId: string) =>
+    request<SimulationImpact>(`/api/applications/${appId}/components/${componentId}/impact`),
+  runSimulation: (appId: string, data: SimulateRequest) =>
+    request<SimulateResponse>(`/api/applications/${appId}/simulate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  listSimulations: (appId: string) =>
+    request<SimulationSummary[]>(`/api/applications/${appId}/simulations`),
+  getSimulation: (appId: string, simulationId: string) =>
+    request<SimulationDetail>(`/api/applications/${appId}/simulations/${simulationId}`),
 };
