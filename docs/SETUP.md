@@ -1,4 +1,4 @@
-# ReframeX — Setup Instructions (Phase 2)
+# ReframeX — Setup Instructions
 
 ## Prerequisites
 

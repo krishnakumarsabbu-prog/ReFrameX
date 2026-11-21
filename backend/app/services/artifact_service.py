@@ -14,6 +14,7 @@ from app.models.models import Artifact, Application
 from app.parsers.classifier import classify
 from app.services.security import (
     SecurityError,
+    is_within_upload,
     reject_executable,
     safe_relative_path,
     validate_zip,
@@ -239,7 +240,7 @@ def get_artifact_content(db: Session, artifact_id: str) -> tuple[Artifact, bytes
     if not artifact:
         return None
     path = settings.upload_dir / artifact.storage_path
-    if not path.exists():
+    if not is_within_upload(path) or not path.exists():
         return None
     return artifact, path.read_bytes()
 
@@ -251,7 +252,8 @@ def delete_artifact(db: Session, artifact_id: str) -> bool:
     # Remove file
     path = settings.upload_dir / artifact.storage_path
     try:
-        path.unlink(missing_ok=True)
+        if is_within_upload(path):
+            path.unlink(missing_ok=True)
     except OSError:
         pass
     db.delete(artifact)

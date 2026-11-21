@@ -15,14 +15,7 @@ export const railItems: RailItem[] = [
   { id: 'artifacts', label: 'Artifact Explorer', path: '/artifacts', icon: 'FileSearch', tabs: [{ id: 'all', label: 'Inventory' }] },
   { id: 'intelligence', label: 'Application Intelligence', path: '/intelligence', icon: 'Sparkles' },
   { id: 'dependencies', label: 'Dependency Intelligence', path: '/dependencies', icon: 'GitBranch' },
-  {
-    id: 'complexity', label: 'Complexity Assessment', path: '/complexity', icon: 'Gauge',
-    tabs: [
-      { id: 'overview', label: 'Overview' },
-      { id: 'domains', label: 'Domains' },
-      { id: 'rules', label: 'Rules' },
-    ],
-  },
+  { id: 'complexity', label: 'Complexity Assessment', path: '/complexity', icon: 'Gauge' },
   { id: 'evidence', label: 'Evidence Explorer', path: '/evidence', icon: 'ScrollText' },
   { id: 'risks', label: 'Unknowns and Risks', path: '/risks', icon: 'AlertTriangle' },
   { id: 'recommendations', label: 'Refactoring Recommendations', path: '/recommendations', icon: 'Lightbulb' },
@@ -31,18 +24,6 @@ export const railItems: RailItem[] = [
   { id: 'compare', label: 'Application Comparison', path: '/compare', icon: 'Columns3' },
   { id: 'evidence-improvement', label: 'Evidence Improvement', path: '/evidence-improvement', icon: 'History' },
   { id: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
-];
-
-export const dashboardTabs = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'risks', label: 'Risks' },
-  { id: 'actions', label: 'Actions' },
-];
-
-export const applicationsTabs = [
-  { id: 'all', label: 'All' },
-  { id: 'active', label: 'Active' },
-  { id: 'archived', label: 'Archived' },
 ];
 
 export const kpis: KPI[] = [

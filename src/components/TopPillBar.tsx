@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, ChevronDown, Contrast, Command } from 'lucide-react';
+import { Search, Contrast, Command } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { railItems } from '@/mock-data';
 
@@ -47,12 +47,7 @@ export default function TopPillBar() {
             </div>
             <span className="hidden md:block text-sm font-semibold text-ink">ReframeX</span>
           </div>
-          <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-white/30">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center text-xs font-semibold text-ink">
-              AM
-            </div>
-            <span className="text-xs text-ink-muted">Welcome, Analyst</span>
-          </div>
+
         </div>
 
         {/* Search / command bar */}
@@ -106,26 +101,7 @@ export default function TopPillBar() {
           >
             <Contrast size={16} />
           </button>
-          <button
-            className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-ink-muted hover:bg-white transition-colors shadow-sm"
-            aria-label="Notifications"
-          >
-            <Bell size={16} />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent" />
-          </button>
-          <button
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full inner-glass hover:bg-white/35 transition-colors text-xs font-medium text-ink-muted"
-            aria-label="Application selector"
-          >
-            All Applications
-            <ChevronDown size={14} />
-          </button>
-          <button
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-200 to-orange-300 text-xs font-semibold text-ink"
-            aria-label="Profile"
-          >
-            AM
-          </button>
+
         </div>
       </div>
     </header>
