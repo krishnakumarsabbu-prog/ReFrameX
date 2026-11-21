@@ -9,6 +9,9 @@ import IntelligencePage from '@/pages/IntelligencePage';
 import DependenciesPage from '@/pages/DependenciesPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 import AssessmentPage from '@/pages/AssessmentPage';
+import EvidenceExplorerPage from '@/pages/EvidenceExplorerPage';
+import UnknownsAndRisksPage from '@/pages/UnknownsAndRisksPage';
+import RecommendationsPage from '@/pages/RecommendationsPage';
 
 export default function App() {
   const { activeTab, setActiveTab } = useActiveTab();
@@ -23,9 +26,9 @@ export default function App() {
           <Route path="/intelligence" element={<IntelligencePage />} />
           <Route path="/dependencies" element={<DependenciesPage />} />
           <Route path="/complexity" element={<AssessmentPage />} />
-          <Route path="/evidence" element={<PlaceholderPage moduleId="evidence" />} />
-          <Route path="/risks" element={<PlaceholderPage moduleId="risks" />} />
-          <Route path="/recommendations" element={<PlaceholderPage moduleId="recommendations" />} />
+          <Route path="/evidence" element={<EvidenceExplorerPage />} />
+          <Route path="/risks" element={<UnknownsAndRisksPage />} />
+          <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/simulator" element={<PlaceholderPage moduleId="simulator" />} />
           <Route path="/reports" element={<PlaceholderPage moduleId="reports" />} />
           <Route path="/compare" element={<PlaceholderPage moduleId="compare" />} />

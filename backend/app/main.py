@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.database.database import init_db
-from app.api import applications, artifacts, health, analysis, dependencies, assessment
+from app.api import applications, artifacts, health, analysis, dependencies, assessment, findings
 
 
 app = FastAPI(
@@ -36,3 +36,4 @@ app.include_router(artifacts.router)
 app.include_router(analysis.router)
 app.include_router(dependencies.router)
 app.include_router(assessment.router)
+app.include_router(findings.router)

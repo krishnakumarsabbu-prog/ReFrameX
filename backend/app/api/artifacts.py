@@ -134,31 +134,6 @@ def get_artifact(artifact_id: str, db: Session = Depends(get_db)):
     return artifact
 
 
-@router.get("/api/artifacts/{artifact_id}/content", response_model=ArtifactContentOut)
-def get_artifact_content(artifact_id: str, db: Session = Depends(get_db)):
-    result = artifact_service.get_artifact_content(db, artifact_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Artifact not found")
-    artifact, data = result
-    is_text = artifact.detected_encoding in ("UTF-8", "ASCII")
-    content = None
-    if is_text:
-        try:
-            content = data.decode("utf-8")
-        except UnicodeDecodeError:
-            content = data.decode("latin-1", errors="replace")
-    return ArtifactContentOut(
-        id=artifact.id,
-        original_filename=artifact.original_filename,
-        relative_path=artifact.relative_path,
-        category=artifact.category,
-        size_bytes=artifact.size_bytes,
-        encoding=artifact.detected_encoding,
-        content=content,
-        is_text=is_text,
-    )
-
-
 @router.delete("/api/artifacts/{artifact_id}", response_model=DeleteResult)
 def delete_artifact(artifact_id: str, db: Session = Depends(get_db)):
     deleted = artifact_service.delete_artifact(db, artifact_id)

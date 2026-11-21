@@ -73,6 +73,16 @@ export interface ArtifactContent {
   encoding: string;
   content: string | null;
   is_text: boolean;
+  highlight_ranges: HighlightRange[];
+}
+
+export interface HighlightRange {
+  line_start: number;
+  line_end: number;
+  rule: string;
+  finding_id: string;
+  evidence_class: string;
+  explanation: string;
 }
 
 export interface ImportFolderResult {
@@ -395,6 +405,107 @@ export interface ComponentAssessment {
   ruleset_version: string;
 }
 
+// ---- Phase 6: Findings, Reviews, Recommendations, Roadmap ----
+
+export interface ReviewAction {
+  id: string;
+  finding_id: string;
+  action: string;
+  reviewer_name: string;
+  reviewer_role: string;
+  reason: string | null;
+  notes: string | null;
+  context: string | null;
+  created_at: string;
+}
+
+export interface Finding {
+  id: string;
+  application_id: string;
+  title: string;
+  domain: string;
+  severity: string;
+  evidence_class: string;
+  source_artifact_id: string | null;
+  source_filename: string;
+  line_start: number;
+  line_end: number;
+  has_line_ref: boolean;
+  detection_rule: string;
+  explanation: string;
+  confidence: number;
+  assessment_impact: string;
+  recommended_action: string | null;
+  review_status: string;
+  finding_type: string;
+  component_id: string | null;
+  extra: Record<string, unknown>;
+  created_at: string;
+  review_actions: ReviewAction[];
+  reviewer_status: string | null;
+  reviewer_notes: string | null;
+}
+
+export interface ReviewRequest {
+  action: string;
+  reviewer_name?: string;
+  reviewer_role?: string;
+  reason?: string;
+  notes?: string;
+  context?: string;
+}
+
+export interface Recommendation {
+  category: string;
+  component: string;
+  component_id: string | null;
+  component_type: string;
+  classification: string;
+  reason: string;
+  supporting_evidence: string[];
+  dependencies: string[];
+  complexity_score: number;
+  complexity_classification: string;
+  confidence_score: number;
+  confidence_classification: string;
+  readiness_score: number;
+  readiness_classification: string;
+  key_risks: string[];
+  prerequisites: string[];
+  next_action: string;
+  candidate_considerations: string[];
+}
+
+export interface RecommendationSummary {
+  application_id: string;
+  total: number;
+  by_category: Record<string, number>;
+  recommendations: Recommendation[];
+}
+
+export interface RoadmapItem {
+  group: string;
+  priority: string;
+  action: string;
+  reason: string;
+  related_components: string[];
+  required_evidence: string[];
+  expected_outcome: string;
+}
+
+export interface Roadmap {
+  application_id: string;
+  groups: Record<string, RoadmapItem[]>;
+  total_items: number;
+}
+
+export interface UnknownsResponse {
+  application_id: string;
+  total: number;
+  by_type: Record<string, number>;
+  items: Finding[];
+}
+
 // ---- Applications ----
 
 export const api = {
@@ -484,4 +595,31 @@ export const api = {
     }),
   getComponentAssessment: (componentId: string) =>
     request<ComponentAssessment>(`/api/components/${componentId}/assessment`),
+
+  // Phase 6: Findings, Reviews, Recommendations, Roadmap
+  getFindings: (appId: string, params?: {
+    evidence_class?: string; domain?: string; severity?: string; finding_type?: string; search?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => { if (v) qs.append(k, v); });
+    }
+    const q = qs.toString();
+    return request<Finding[]>(`/api/applications/${appId}/findings${q ? `?${q}` : ''}`);
+  },
+  getUnknowns: (appId: string) =>
+    request<UnknownsResponse>(`/api/applications/${appId}/unknowns`),
+  getRecommendations: (appId: string) =>
+    request<RecommendationSummary>(`/api/applications/${appId}/recommendations`),
+  getRoadmap: (appId: string) =>
+    request<Roadmap>(`/api/applications/${appId}/roadmap`),
+  reviewFinding: (findingId: string, data: ReviewRequest) =>
+    request<ReviewAction>(`/api/findings/${findingId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getArtifactContentWithHighlights: (artifactId: string, findingId?: string) => {
+    const qs = findingId ? `?finding_id=${findingId}` : '';
+    return request<ArtifactContent>(`/api/artifacts/${artifactId}/content${qs}`);
+  },
 };

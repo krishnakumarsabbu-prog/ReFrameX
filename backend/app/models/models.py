@@ -146,3 +146,61 @@ class AssessmentRecord(Base):
     human_reviewed = sa.Column(sa.Boolean, nullable=False, default=False)
 
     application = relationship("Application")
+
+
+class Finding(Base):
+    """A material conclusion derived from assessment evidence.
+
+    Findings are machine-generated and immutable. Reviewer changes are stored
+    separately in ReviewAction rows. Findings are rebuilt on each assessment run;
+    their deterministic IDs stay stable across reassessment for the same evidence.
+    """
+    __tablename__ = "findings"
+
+    id = sa.Column(sa.String(80), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = sa.Column(sa.String(512), nullable=False)
+    domain = sa.Column(sa.String(100), nullable=False, default="")
+    severity = sa.Column(sa.String(50), nullable=False, default="info")
+    evidence_class = sa.Column(sa.String(50), nullable=False, default="Evidence-based")
+    source_artifact_id = sa.Column(sa.String(36), sa.ForeignKey("artifacts.id", ondelete="CASCADE"), nullable=True)
+    source_filename = sa.Column(sa.String(512), nullable=False, default="")
+    line_start = sa.Column(sa.Integer, nullable=False, default=0)
+    line_end = sa.Column(sa.Integer, nullable=False, default=0)
+    has_line_ref = sa.Column(sa.Boolean, nullable=False, default=False)
+    detection_rule = sa.Column(sa.String(100), nullable=False, default="")
+    explanation = sa.Column(sa.Text, nullable=False, default="")
+    confidence = sa.Column(sa.Float, nullable=False, default=0.0)
+    assessment_impact = sa.Column(sa.String(50), nullable=False, default="neutral")
+    recommended_action = sa.Column(sa.Text, nullable=True)
+    review_status = sa.Column(sa.String(50), nullable=False, default="open")
+    finding_type = sa.Column(sa.String(50), nullable=False, default="rule_firing")
+    component_id = sa.Column(sa.String(16), nullable=True)
+    extra_json = sa.Column(sa.Text, nullable=False, default="{}")
+    created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    application = relationship("Application")
+    source_artifact = relationship("Artifact", foreign_keys=[source_artifact_id])
+    review_actions = relationship("ReviewAction", back_populates="finding", cascade="all, delete-orphan", order_by="ReviewAction.created_at")
+
+
+class ReviewAction(Base):
+    """A reviewer action on a finding. Stored separately from machine findings.
+
+    Machine findings are immutable; reviewer changes are appended here with
+    timestamp and reviewer name. The latest review action determines the
+    current reviewer-adjusted status.
+    """
+    __tablename__ = "review_actions"
+
+    id = sa.Column(sa.String(36), primary_key=True)
+    finding_id = sa.Column(sa.String(80), sa.ForeignKey("findings.id", ondelete="CASCADE"), nullable=False, index=True)
+    action = sa.Column(sa.String(50), nullable=False)
+    reviewer_name = sa.Column(sa.String(255), nullable=False, default="anonymous")
+    reviewer_role = sa.Column(sa.String(50), nullable=False, default="Viewer")
+    reason = sa.Column(sa.Text, nullable=True)
+    notes = sa.Column(sa.Text, nullable=True)
+    context = sa.Column(sa.Text, nullable=True)
+    created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    finding = relationship("Finding", back_populates="review_actions")

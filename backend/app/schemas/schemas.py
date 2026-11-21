@@ -84,6 +84,7 @@ class ArtifactContentOut(BaseModel):
     encoding: str
     content: str | None  # None for binary/EBCDIC
     is_text: bool
+    highlight_ranges: list[dict] = Field(default_factory=list)
 
 
 class ImportFolderResult(BaseModel):
@@ -373,4 +374,107 @@ class ComponentAssessmentOut(BaseModel):
     evidence_refs: list[dict]
     model_version: str
     ruleset_version: str
+
+
+# ---- Phase 6: Findings, Reviews, Recommendations, Roadmap ----
+
+class ReviewActionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    finding_id: str
+    action: str
+    reviewer_name: str
+    reviewer_role: str
+    reason: str | None
+    notes: str | None
+    context: str | None
+    created_at: datetime
+
+
+class FindingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    application_id: str
+    title: str
+    domain: str
+    severity: str
+    evidence_class: str
+    source_artifact_id: str | None
+    source_filename: str
+    line_start: int
+    line_end: int
+    has_line_ref: bool
+    detection_rule: str
+    explanation: str
+    confidence: float
+    assessment_impact: str
+    recommended_action: str | None
+    review_status: str
+    finding_type: str
+    component_id: str | None
+    extra: dict = Field(default_factory=dict)
+    created_at: datetime
+    review_actions: list[ReviewActionOut] = Field(default_factory=list)
+    reviewer_status: str | None = None
+    reviewer_notes: str | None = None
+
+
+class ReviewRequest(BaseModel):
+    action: str = Field(..., description="confirm | reject | investigate | add_context | add_note")
+    reviewer_name: str = Field(default="anonymous", max_length=255)
+    reviewer_role: str = Field(default="Viewer")
+    reason: str | None = None
+    notes: str | None = None
+    context: str | None = None
+
+
+class RecommendationOut(BaseModel):
+    category: str
+    component: str
+    component_id: str | None
+    component_type: str
+    classification: str
+    reason: str
+    supporting_evidence: list[str]
+    dependencies: list[str]
+    complexity_score: float
+    complexity_classification: str
+    confidence_score: float
+    confidence_classification: str
+    readiness_score: float
+    readiness_classification: str
+    key_risks: list[str]
+    prerequisites: list[str]
+    next_action: str
+    candidate_considerations: list[str] = Field(default_factory=list)
+
+
+class RecommendationSummaryOut(BaseModel):
+    application_id: str
+    total: int
+    by_category: dict[str, int]
+    recommendations: list[RecommendationOut]
+
+
+class RoadmapItemOut(BaseModel):
+    group: str
+    priority: str
+    action: str
+    reason: str
+    related_components: list[str]
+    required_evidence: list[str]
+    expected_outcome: str
+
+
+class RoadmapOut(BaseModel):
+    application_id: str
+    groups: dict[str, list[RoadmapItemOut]]
+    total_items: int
+
+
+class UnknownsOut(BaseModel):
+    application_id: str
+    total: int
+    by_type: dict[str, int]
+    items: list[FindingOut]
 
