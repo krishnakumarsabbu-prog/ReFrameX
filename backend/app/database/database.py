@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -49,6 +50,16 @@ def _auto_migrate() -> None:
 
 def get_db():
     """FastAPI dependency: yield a session, close it after."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_db_context():
+    """Context manager for non-FastAPI scripts: yield session and close."""
     db = SessionLocal()
     try:
         yield db

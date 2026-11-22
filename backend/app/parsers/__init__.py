@@ -14,6 +14,7 @@ from app.parsers import copybook_parser
 from app.parsers import sql_parser
 from app.parsers import bms_parser
 from app.parsers import vsam_parser
+from app.parsers import hlasm_parser
 from app.parsers import detect_only_parsers
 
 __all__ = [

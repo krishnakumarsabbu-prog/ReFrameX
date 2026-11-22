@@ -29,6 +29,7 @@ class Application(Base):
     updated_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
     artifacts = relationship("Artifact", back_populates="application", cascade="all, delete-orphan")
+    llm_evaluations = relationship("LLMEvaluation", back_populates="application", cascade="all, delete-orphan")
 
 
 class Artifact(Base):
@@ -230,3 +231,27 @@ class ReviewAction(Base):
     created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
 
     finding = relationship("Finding", back_populates="review_actions")
+
+
+class LLMEvaluation(Base):
+    """Storage for LLM second opinion reviews and evaluation harness results (B5)."""
+    __tablename__ = "llm_evaluations"
+
+    id = sa.Column(sa.String(36), primary_key=True)
+    application_id = sa.Column(sa.String(36), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_type = sa.Column(sa.String(50), nullable=False)  # T1, T2, T3
+    target_id = sa.Column(sa.String(80), nullable=False, index=True)  # finding_id, component_id, or application_id
+    target_type = sa.Column(sa.String(50), nullable=False)  # finding, component, recommendation
+    prompt_hash = sa.Column(sa.String(64), nullable=False)
+    model_id = sa.Column(sa.String(100), nullable=False)
+    provider = sa.Column(sa.String(50), nullable=False)
+    send_mode = sa.Column(sa.String(50), nullable=False)
+    request_payload = sa.Column(sa.Text, nullable=False)
+    response_json = sa.Column(sa.Text, nullable=False)
+    status = sa.Column(sa.String(50), nullable=False, default="completed")  # completed, failed, validation_failed
+    review_status = sa.Column(sa.String(50), nullable=False, default="pending")  # pending, accepted, dismissed
+    reviewer_notes = sa.Column(sa.Text, nullable=True)
+    created_at = sa.Column(sa.DateTime(timezone=True), nullable=False, default=_utcnow)
+    reviewed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+
+    application = relationship("Application", back_populates="llm_evaluations")

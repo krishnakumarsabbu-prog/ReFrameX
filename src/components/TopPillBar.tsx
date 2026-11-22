@@ -1,15 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Contrast, Command, Bell, ShieldAlert } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, Command, Bell, Menu, ChevronRight, Sparkles } from 'lucide-react';
 import { railItems } from '@/mock-data';
 
-export default function TopPillBar() {
-  const { reduceTransparency, toggleReduceTransparency } = useTheme();
+interface TopPillBarProps {
+  onOpenMobileNav?: () => void;
+}
+
+export default function TopPillBar({ onOpenMobileNav }: TopPillBarProps) {
+  const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const currentModule = railItems.find(
+    (item) => item.path === location.pathname || (item.path !== '/' && location.pathname.startsWith(item.path))
+  );
 
   const results = query
     ? railItems.filter((item) => item.label.toLowerCase().includes(query.toLowerCase()))
@@ -37,21 +44,37 @@ export default function TopPillBar() {
   }, []);
 
   return (
-    <header className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-7xl">
-      <div className="glass-strong rounded-pill flex items-center gap-3 px-3 sm:px-4 py-2">
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/70 border border-white/60 text-accent font-bold text-xs shadow-sm">
-            RX
-          </div>
-          <div className="hidden sm:block leading-tight">
-            <p className="text-[10px] text-ink-soft">Welcome back</p>
-            <p className="text-sm font-semibold text-ink">ReFrameX</p>
+    <header className="sticky top-0 z-30 h-14 border-b border-[#E3E5E7] bg-white/85 backdrop-blur-md">
+      <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-8 lg:px-10">
+        {/* Left Side: Mobile Menu Button & Breadcrumb */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={onOpenMobileNav}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E3E5E7] text-[#777D83] transition-colors hover:bg-[#F1F2F3] hover:text-[#202124] md:hidden"
+            aria-label="Open navigation"
+          >
+            <Menu size={16} />
+          </button>
+
+          {/* Breadcrumb Trail */}
+          <div className="hidden sm:flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-slate-500">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/25 shrink-0" />
+            <span className="font-bold text-slate-800">MIGRATION INTELLIGENCE</span>
+            <ChevronRight size={11} className="text-slate-300" />
+            <span className="text-indigo-600 font-bold">
+              {currentModule?.label.toUpperCase() ?? 'OVERVIEW'}
+            </span>
           </div>
         </div>
 
-        <div className="flex-1 relative max-w-xl mx-auto">
+        {/* Center: Command Palette Search */}
+        <div className="relative w-full max-w-sm sm:max-w-md">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+            <Search
+              size={14}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#A0A4A8]"
+            />
             <input
               ref={inputRef}
               type="text"
@@ -65,51 +88,72 @@ export default function TopPillBar() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && results[0]) handleSelect(results[0].path);
               }}
-              placeholder="Search modules or jump to a page..."
-              className="w-full pl-9 pr-16 py-2 rounded-pill inner-glass text-sm text-ink placeholder:text-ink-soft focus:bg-white/35 focus:border-accent/50 transition-colors outline-none"
+              placeholder="Search artifacts, applications, rules... ⌘K"
+              aria-label="Search modules"
+              className="h-8 w-full rounded-xl border border-[#E3E5E7] bg-[#F1F2F3] pl-8 pr-14 text-xs text-[#202124] placeholder:text-[#A0A4A8] outline-none transition-all focus:border-[#202124] focus:bg-white focus:ring-2 focus:ring-[#C5F45A]/40"
             />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-ink/8 text-[10px] text-ink-soft font-mono">
+            <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg border border-[#E3E5E7] bg-white px-1.5 py-0.5 font-mono text-[10px] text-[#777D83]">
               <Command size={10} />K
             </kbd>
           </div>
+
+          {/* Quick Search Dropdown */}
           {showResults && results.length > 0 && (
-            <div className="absolute top-full mt-2 left-0 right-0 glass-strong rounded-2xl py-2 max-h-72 overflow-y-auto">
+            <div className="absolute left-0 right-0 top-full mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-[#E3E5E7] bg-white py-1 shadow-[0_8px_24px_rgba(25,30,35,0.08)]">
               {results.map((item) => (
                 <button
                   key={item.id}
                   onMouseDown={() => handleSelect(item.path)}
-                  className="w-full text-left px-4 py-2 text-sm text-ink-muted hover:bg-white/40 transition-colors"
+                  className="w-full px-3.5 py-2 text-left text-xs text-[#777D83] transition-colors hover:bg-[#F1F2F3] hover:text-[#202124] flex items-center justify-between"
                 >
-                  {item.label}
+                  <span className="font-medium">{item.label}</span>
+                  <span className="font-mono text-[10px] text-[#A0A4A8]">{item.path}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right Side: Quick Actions & Profile */}
+        <div className="flex shrink-0 items-center gap-2.5">
+          {/* AI Copilot Pill */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-reframex-chat'))}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 to-blue-50/90 hover:from-indigo-100 hover:to-blue-100 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:border-indigo-300 transition-all active:scale-95 group"
+            aria-label="Toggle AI Copilot"
+            title="Open AI Copilot (Ctrl+J)"
+          >
+            <Sparkles size={13} className="text-indigo-600 transition-transform group-hover:rotate-12" />
+            <span className="hidden sm:inline font-sans">AI Copilot</span>
+            <kbd className="hidden lg:inline-flex items-center text-[9px] font-mono font-normal text-indigo-500 bg-white/80 px-1 py-0.5 rounded border border-indigo-200/60">
+              ^J
+            </kbd>
+          </button>
+
           <button
             onClick={() => navigate('/risks')}
-            className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/70 text-ink hover:bg-white transition-colors shadow-sm"
+            className="relative flex h-8 w-8 items-center justify-center rounded-xl border border-[#E3E5E7] bg-white text-[#777D83] transition-colors hover:bg-[#F1F2F3] hover:text-[#202124] shadow-[0_1px_2px_rgba(25,30,35,0.04)]"
             aria-label="Open risk register"
             title="Open risk register"
           >
-            <Bell size={16} />
-            <span className="absolute top-1 right-1 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-accent text-white">
-              <ShieldAlert size={9} />
+            <Bell size={15} />
+            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#DC2626] text-[8px] font-bold text-white">
+              5
             </span>
           </button>
-          <button
-            onClick={toggleReduceTransparency}
-            className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors ${
-              reduceTransparency ? 'bg-accent-soft text-accent' : 'text-ink-muted hover:bg-white/40'
-            }`}
-            aria-label="Toggle reduce transparency"
-            title="Reduce transparency"
-          >
-            <Contrast size={16} />
-          </button>
 
+          <div className="h-5 w-px bg-[#E3E5E7]" />
+
+          {/* Minimal Architect Profile Pill */}
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 shadow-2xs">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-blue-600 font-mono text-[10px] font-bold text-white shadow-2xs">
+              EA
+            </div>
+            <div className="hidden lg:block text-left leading-tight">
+              <p className="font-sans text-[11px] font-bold text-slate-800">Enterprise Architect</p>
+              <p className="font-mono text-[9px] text-slate-500 font-medium">PROD · REFRAMEX</p>
+            </div>
+          </div>
         </div>
       </div>
     </header>

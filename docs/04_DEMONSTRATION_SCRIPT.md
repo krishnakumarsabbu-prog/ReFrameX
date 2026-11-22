@@ -77,6 +77,6 @@ The following evidence is available for the demonstration:
 | Ground truth data | `backend/tests/ground_truth/ground_truth.json` |
 | Accuracy report output | `backend/app/tests/ground_truth/results/latest_accuracy.json` |
 | Scoring methodology | `docs/SCORING_METHODOLOGY.md` |
-| Ruleset | `backend/app/assessment/rulesets/default_ruleset_v1.json` |
-| Test results | 107 tests passing (90 original + 17 Phase 9) |
+| Ruleset | `backend/app/assessment/rulesets/default_ruleset_v2.json` |
+| Test results | 132 tests passing |
 | Parser coverage | `docs/PARSER_COVERAGE.md` |

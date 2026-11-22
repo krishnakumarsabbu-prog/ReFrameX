@@ -1,0 +1,19 @@
+*-------------------------------------------------------------*
+* CLM01M.bms - CICS 3270 CLAIMS INQUIRY AND ENTRY SCREEN MAP  *
+*-------------------------------------------------------------*
+         PRINT NOGEN
+CLM01M   DFHMSD TYPE=&SYSPARM,MODE=INOUT,LANG=COBOL,                   *
+               DSATTS=(ATTIN,ATTOUT),STORAGE=AUTO,                    *
+               TIOAPFX=YES
+CLMINQ   DFHMDI SIZE=(24,80),LINE=1,COLUMN=1,CTRL=FREEKB
+         DFHMDF POS=(1,26),ATTRB=(NORM,PROT),                         *
+               LENGTH=28,INITIAL='INSURANCE CLAIMS INQUIRY'
+         DFHMDF POS=(3,5),ATTRB=(NORM,PROT),LENGTH=10,                *
+               INITIAL='CLAIM ID:'
+CLMID    DFHMDF POS=(3,16),ATTRB=(NORM,UNPROT,IC),                    *
+               LENGTH=10,INITIAL='__________'
+         DFHMDF POS=(5,5),ATTRB=(NORM,PROT),LENGTH=10,                *
+               INITIAL='AMOUNT:'
+CLMAMT   DFHMDF POS=(5,16),ATTRB=(NORM,UNPROT),                       *
+               LENGTH=12,INITIAL='____________'
+         DFHMSD TYPE=FINAL

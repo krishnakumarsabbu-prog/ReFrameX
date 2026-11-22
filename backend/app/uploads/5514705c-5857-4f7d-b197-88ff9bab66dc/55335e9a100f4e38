@@ -1,0 +1,17 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. LOANPROC.
+       AUTHOR. REFRAMEX-SAMPLE.
+      *----------------------------------------------------------------*
+      * COMMERCIAL LOAN RECONCILIATION & INTEREST ACCRUAL ENGINE       *
+      *----------------------------------------------------------------*
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01  WS-TOTAL-INTEREST    PIC 9(9)V99 VALUE ZERO.
+       COPY LOANREC.
+
+       PROCEDURE DIVISION.
+       MAIN-LOAN.
+           MOVE 125000.00 TO LOAN-BALANCE
+           COMPUTE WS-TOTAL-INTEREST = LOAN-BALANCE * (LOAN-RATE / 100)
+           DISPLAY 'TOTAL INTEREST: ' WS-TOTAL-INTEREST
+           STOP RUN.

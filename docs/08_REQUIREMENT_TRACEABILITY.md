@@ -7,8 +7,8 @@ This matrix maps every challenge requirement, FAQ item, deliverable, domain, and
 | Criterion | Weight | Feature | File | Test |
 |---|---|---|---|---|
 | Breadth | 25 | 14 modules: Dashboard, Applications, Artifacts, Intelligence, Dependencies, Assessment, Evidence, Risks, Recommendations, Simulator, Reports, Compare, Evidence Improvement, Settings | `src/App.tsx` (routes), `src/pages/*` | `test_api.py` (all endpoints), `test_phase9_validation.py::TestAssessmentAPI` |
-| Accuracy and evidence | 25 | Evidence-classified findings, line-numbered references, 100% parser accuracy, deterministic scoring | `backend/app/assessment/scoring_engine.py`, `backend/app/assessment/accuracy_report.py` | `test_parsers.py`, `test_scoring.py::TestScenarios`, `test_phase9_validation.py::TestDependencyGraphRules` |
-| Reusability | 20 | JSON ruleset, parser registry, pluggable architecture, Reuse Guide | `backend/app/assessment/rulesets/default_ruleset_v1.json`, `backend/app/parsers/base.py` | `test_scoring.py::TestRulesetValidation`, `test_parsers.py::test_registry_*` |
+| Accuracy and evidence | 25 | Evidence-classified findings, line-numbered references, 99.36% benchmark parser accuracy, deterministic scoring | `backend/app/assessment/scoring_engine.py`, `backend/app/assessment/accuracy_report.py` | `test_parsers.py`, `test_scoring.py::TestScenarios`, `test_phase9_validation.py::TestDependencyGraphRules` |
+| Reusability | 20 | JSON ruleset, parser registry, pluggable architecture, Reuse Guide | `backend/app/assessment/rulesets/default_ruleset_v2.json`, `backend/app/parsers/base.py` | `test_scoring.py::TestRulesetValidation`, `test_parsers.py::test_registry_*` |
 | Explainability | 15 | Per-rule evidence refs, drill-down drawers, domain breakdown, missing-information registry, evidence classifications | `src/pages/AssessmentPage.tsx`, `src/pages/EvidenceExplorerPage.tsx` | `test_scoring.py::TestSerialization`, `test_phase9_validation.py::TestAssessmentAPI` |
 | Extensibility | 10 | `@register_parser` decorator, `CapabilityLevel` enum, schema-validated ruleset, what-if weight simulation | `backend/app/parsers/base.py`, `backend/app/assessment/ruleset_schema.json` | `test_scoring.py::TestWhatIfSensitivity`, `test_phase9_validation.py::TestWeightSensitivity` |
 | Usability | 5 | Glass UI, search, responsive design, reduce-transparency toggle, bottom tab navigation | `src/layouts/AppLayout.tsx`, `src/components/*` | Frontend build passes (`npm run build`) |
@@ -17,9 +17,9 @@ This matrix maps every challenge requirement, FAQ item, deliverable, domain, and
 
 | Requirement | Feature | File | Test |
 |---|---|---|---|
-| Migration Complexity score | Complexity scoring with 24 rules, 8 domains | `scoring_engine.py::compute_assessment` | `test_scoring.py::TestScenarios` |
-| Assessment Confidence score | Confidence scoring with 11 rules | `scoring_engine.py::compute_assessment` | `test_scoring.py::TestMissingArtifacts` |
-| Migration Readiness score | Readiness scoring with 13 rules | `scoring_engine.py::compute_assessment` | `test_scoring.py::TestScenarios::test_high_readiness_despite_high_complexity` |
+| Migration Complexity score | Complexity scoring with 34 rules, 8 domains | `scoring_engine.py::compute_assessment` | `test_scoring.py::TestScenarios` |
+| Assessment Confidence score | Confidence scoring with 23 rules | `scoring_engine.py::compute_assessment` | `test_scoring.py::TestMissingArtifacts` |
+| Migration Readiness score | Readiness scoring with 23 rules | `scoring_engine.py::compute_assessment` | `test_scoring.py::TestScenarios::test_high_readiness_despite_high_complexity` |
 | Three measures computed independently | Separate rule sets, separate normalization, separate aggregation | `scoring_engine.py` L66, L790-810 | `test_scoring.py::TestMeasureIndependence`, `test_phase9_validation.py::TestMeasureIndependenceExtended` |
 | Evidence classification (Evidence-based, Inferred, Assumed, Unknown) | Per-component evidence_class, per-finding evidence_class | `backend/app/parsers/base.py` L33, `backend/app/services/finding_service.py` | `test_parsers.py::test_cobol_extracts_dynamic_call` (Inferred) |
 | Traceable evidence (artifact, line, rule) | Evidence refs with artifact_id, line_start, line_end, rule, snippet | `scoring_engine.py::RuleFiring` | `test_scoring.py::TestSerialization` |

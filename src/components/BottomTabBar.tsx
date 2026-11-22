@@ -28,31 +28,33 @@ export default function BottomTabBar({
   if (!tabs || tabs.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-      <div className="glass-strong rounded-pill flex items-center gap-1 px-2 py-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`px-4 py-2 rounded-2xl text-sm font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? 'bg-white text-ink shadow-sm'
-                : 'text-ink-muted hover:text-ink hover:bg-white/20'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="fixed bottom-5 left-1/2 z-30 -translate-x-1/2">
+      <div className="flex items-center gap-1.5 rounded-full border border-[#E3E5E7] bg-white/95 backdrop-blur-md px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,30,35,0.08)]">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={`rounded-full px-4 py-1.5 text-xs font-medium tracking-wide transition-all duration-150 ${isActive
+                  ? 'bg-[#202124] text-white shadow-sm'
+                  : 'text-[#777D83] hover:bg-[#F1F2F3] hover:text-[#202124]'
+                }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
         {showAddAction && (
           <>
-            <div className="w-px h-6 bg-white/30 mx-1" />
+            <div className="mx-1 h-5 w-px bg-[#E3E5E7]" />
             <button
               onClick={onAddAction ?? (() => navigate('/applications'))}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-ink hover:bg-white/85 transition-colors shadow-sm"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#202124] text-white transition-colors hover:bg-[#333538] hover:text-[#C5F45A] shadow-sm"
               aria-label={addActionLabel ?? 'Add'}
               title={addActionLabel ?? 'Add'}
             >
-              <Plus size={18} />
+              <Plus size={15} />
             </button>
           </>
         )}

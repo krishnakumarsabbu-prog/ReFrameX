@@ -140,3 +140,31 @@ def delete_artifact(artifact_id: str, db: Session = Depends(get_db)):
     if not deleted:
         raise HTTPException(status_code=404, detail="Artifact not found")
     return DeleteResult(deleted=True, id=artifact_id)
+
+
+@router.post("/api/applications/{app_id}/artifacts/load-sample", response_model=list[ArtifactOut])
+def load_sample_artifacts(app_id: str, db: Session = Depends(get_db)):
+    """Load verified sample mainframe repository pack directly into the application."""
+    app = application_service.get_application(db, app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    zip_path = Path(__file__).resolve().parents[3] / "sample_files_for_upload" / "sample_inventory_pack.zip"
+    if not zip_path.exists():
+        for candidate in [
+            Path("sample_files_for_upload/sample_inventory_pack.zip"),
+            Path("../sample_files_for_upload/sample_inventory_pack.zip"),
+            Path("../../sample_files_for_upload/sample_inventory_pack.zip"),
+        ]:
+            if candidate.exists():
+                zip_path = candidate
+                break
+    if not zip_path.exists():
+        raise HTTPException(status_code=404, detail=f"Sample pack not found at {zip_path}")
+
+    with open(zip_path, "rb") as f:
+        data = f.read()
+
+    results = artifact_service.ingest_zip(db, app_id, data)
+    return results
+

@@ -26,7 +26,7 @@ Inputs are provided via file upload, ZIP archive, or folder import (read-only fr
 2. **Static extraction**: Parsers extract normalized components (programs, paragraphs, files, tables, jobs, maps, etc.) with line numbers and evidence references.
 3. **Dependency discovery**: Cross-component relationships (CALL, COPY, EXEC SQL table references, JCL EXEC references) are identified and classified.
 4. **Graph analysis**: The dependency graph is analyzed for circular dependencies, single points of failure, and unresolved targets.
-5. **Rule-based scoring**: A JSON ruleset (40 rules across 8 domains) is evaluated against the evidence. Each rule fires based on detection conditions and contributes to complexity, confidence, or readiness scores.
+5. **Rule-based scoring**: A JSON ruleset (80 rules across 8 domains in `default_ruleset_v2.json`) is evaluated against the evidence. Each rule fires based on detection conditions and contributes to complexity, confidence, or readiness scores.
 
 ## Domains (8)
 
@@ -45,11 +45,11 @@ Inputs are provided via file upload, ZIP archive, or folder import (read-only fr
 
 Three independent measures, each 0-100:
 
-- **Complexity**: Sigmoid normalization `100 * raw / (raw + 20)` per domain, then weighted average across evidenced domains. Higher = more complex.
-- **Confidence**: `clamp(50 + raw, 0, 100)` per domain, then weighted average. Higher = more trustworthy assessment.
-- **Readiness**: `clamp(50 + raw, 0, 100)` per domain, then weighted average. Higher = more ready for planning.
+- **Complexity**: Hyperbolic normalization `100 * raw / (raw + 20)` per domain, then weighted average across evidenced domains. Higher = more complex.
+- **Confidence**: `clamp(0.0 + raw, 0, 100)` per domain, aggregated across all 8 domains (unevidenced = 0.0), capped by evidence coverage ratio (`coverage_ratio * 100`). Higher = more trustworthy assessment.
+- **Readiness**: `clamp(0.0 + raw, 0, 100)` per domain, aggregated across all 8 domains (unevidenced = 0.0). Higher = more ready for planning.
 
-Domains with no evidence are excluded from aggregation (weights renormalized over evidenced domains). Missing evidence never counts as low complexity.
+Domains with no evidence are excluded from complexity aggregation (weights renormalized over evidenced domains). Missing evidence never counts as low complexity.
 
 ## Confidence Model
 

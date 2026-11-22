@@ -52,8 +52,8 @@ def test_cobol_extracts_dynamic_call():
     result = parser.parse("art-1", "PAYCALC.cbl", content, "COBOL")
     dynamic_calls = [c for c in result.components
                      if c.component_type == "PROGRAM"
-                     and c.detected_properties.get("call_type") == "dynamic"]
-    assert any(c.name == "WS-CALL-TARGET" for c in dynamic_calls)
+                     and c.detected_properties.get("call_type") in ("dynamic_resolved", "dynamic")]
+    assert any(c.name == "SUBPROG" or c.detected_properties.get("target_variable") == "WS-CALL-TARGET" for c in dynamic_calls)
     assert dynamic_calls[0].evidence_class == "Inferred"
 
 

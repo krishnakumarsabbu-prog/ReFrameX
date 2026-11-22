@@ -52,7 +52,7 @@ Each rule in the JSON ruleset has:
 
 Rules are validated against a JSON schema at load time. Malformed rules are rejected with a clear error message.
 
-## Formulas
+## Formulas (Ruleset v2 & Engine Corrections)
 
 ### Per-Rule Contribution
 
@@ -63,7 +63,7 @@ points = weight (with sign: positive impact = +weight, negative impact = +weight
 ```
 
 For **complexity**: negative-impact rules add to raw score; positive-impact rules subtract.
-For **confidence** and **readiness**: both positive and negative impacts add to raw score (positive adds, negative subtracts).
+For **confidence** and **readiness**: positive-impact rules add to raw score; negative-impact rules subtract.
 
 ### Per-Domain Raw Score
 
@@ -73,38 +73,52 @@ domain_raw[domain][measure] = sum of all fired rule points in that domain/measur
 
 ### Per-Domain Normalization
 
-**Complexity** (sigmoid-like soft cap):
+**Complexity (Saturating / Hyperbolic Normalization)**:
 ```
 if raw > 0:
-    normalized = 100 * (raw / (raw + K))    where K = 20
+    normalized = 100 * raw / (raw + K)    where K is configurable (default K = 20)
 if raw <= 0:
-    normalized = max(0, 10 + raw)           # small positive baseline from positive factors
+    normalized = 0.0
 ```
 
-K=20 was chosen so that a raw score of 20 (e.g., two GOTO statements) maps to 50% complexity, and a raw score of 80 maps to 80%. This gives a reasonable distribution without linear scaling that would make small numbers look trivial.
+`K = 20` ensures smooth, asymptotically bounded scaling without arbitrary cutoffs or exponential distortion.
 
-**Confidence** (baseline + delta):
+**Confidence & Readiness (Zero Baseline, Non-Inflated)**:
 ```
-normalized = clamp(50 + raw, 0, 100)
-```
-
-Confidence starts at 50 (neutral). Positive evidence (parsed artifacts, evidence-based components) raises it; missing evidence (unsupported artifacts, missing copybooks) lowers it.
-
-**Readiness** (baseline + delta):
-```
-normalized = clamp(50 + raw, 0, 100)
+normalized = clamp(baseline + raw, 0, 100)    where baseline = 0 (ruleset v2)
 ```
 
-Readiness starts at 50 (neutral). Documented ownership, available artifacts, and resolved dependencies raise it; missing documentation, unresolved dependencies, and unsupported artifacts lower it.
+In ruleset v2, the neutral baseline of 50 has been removed. Rule points are rescaled so that a fully evidenced, well-documented application can reach ~100 per domain, and an unevidenced domain scores 0.
 
 ### Overall Aggregation
 
-```
-overall[measure] = sum(domain_normalized[domain][measure] * domain_weight[domain]) 
-                   / sum(domain_weight[domain] for domains with evidence)
-```
+- **Complexity (Evidenced Domains Only)**:
+  Renormalized dynamically over evidenced domains only:
+  ```
+  overall_complexity = sum(domain_norm[d] * weight[d] for d in evidenced) / sum(weight[d] for d in evidenced)
+  ```
+  Output includes `domains_assessed` (N of 8), `coverage_ratio`, and `unassessed_domains`.
 
-Only domains with evidence contribute. Weights are renormalized over contributing domains so that a domain with no evidence does not dilute the score.
+- **Confidence and Readiness (All 8 Domains)**:
+  Aggregates over **ALL 8 domains** using domain weights. Unevidenced domains contribute 0 (not excluded, not 50):
+  ```
+  overall_score = sum(domain_norm[d] * weight[d] for d in all_8_domains)
+  ```
+
+- **Confidence Coverage Cap**:
+  Confidence is capped by evidence coverage to prevent false certainty:
+  ```
+  overall_confidence = min(overall_confidence, coverage_cap * coverage_ratio)
+  ```
+  (where `coverage_cap = 100.0`).
+
+### Target-Neutral Modernization Considerations
+
+Recommendations are framed target-neutrally as **"Hypothesis for further evaluation"** listing options without premature commitment:
+1. Decompose into distributed microservices
+2. Refactor in place within modern language runtime
+3. Retain on mainframe with API wrapper
+4. Containerized platform such as OpenShift as ONE possible target
 
 ### Classification Thresholds
 
@@ -214,12 +228,12 @@ Example: increasing `CX-AB-002` (GOTO) weight from 10 to 50 increases the raw co
 
 ## Ruleset Governance
 
-- **Owner**: Migration Assessment Team (placeholder role — to be assigned by governance)
-- **Version**: 1.0.0
+- **Owner**: ReFrameX Architecture Review Board
+- **Version**: 2.0.0
 - **Effective date**: 2026-11-21
 - **Change log**: Maintained in the ruleset JSON file
 
-To modify the ruleset, edit the JSON file at `backend/app/assessment/rulesets/default_ruleset_v1.json`. The schema at `backend/app/assessment/ruleset_schema.json` validates the structure at load time.
+To modify the ruleset, edit the JSON file at `backend/app/assessment/rulesets/default_ruleset_v2.json`. The schema at `backend/app/assessment/ruleset_schema.json` validates the structure at load time.
 
 ## Unsupported Technology and Upgrade Guidance (FAQ 8)
 

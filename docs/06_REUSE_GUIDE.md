@@ -41,7 +41,7 @@ This builds the dependency graph from extracted components.
 ```
 POST /api/applications/{app_id}/assess
 ```
-This evaluates all 40 rules against the evidence and computes complexity, confidence, and readiness.
+This evaluates all 80 rules (34 complexity, 23 confidence, 23 readiness) against the evidence and computes complexity, confidence, and readiness.
 
 ### Step 6: Review Findings
 Navigate to the Evidence Explorer or Unknowns and Risks page. Review each finding, override evidence classifications if needed, and add reviewer notes.
@@ -119,7 +119,7 @@ Add sample files to `backend/tests/ground_truth/samples/` and update `ground_tru
 ## Adding a New Rule
 
 ### Step 1: Edit the Ruleset
-Open `backend/app/assessment/rulesets/default_ruleset_v1.json` and add a rule:
+Open `backend/app/assessment/rulesets/default_ruleset_v2.json` and add a rule:
 
 ```json
 {

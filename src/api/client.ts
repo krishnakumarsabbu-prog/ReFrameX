@@ -336,6 +336,15 @@ export interface Assessment {
   recommended_next_steps: string[];
   evidence_refs: Array<{ artifact_id: string; line_start: number; line_end: number; rule: string; snippet?: string }>;
   duration_ms: number;
+  domains_assessed?: number;
+  coverage_ratio?: number;
+  unassessed_domains?: string[];
+  rule_counts?: {
+    total: number;
+    by_measure: Record<string, number>;
+    by_domain: Record<string, number>;
+  };
+  version_comparison_warning?: string | null;
 }
 
 export interface DomainBreakdown {
@@ -403,6 +412,34 @@ export interface ComponentAssessment {
   evidence_refs: Array<{ artifact_id: string; line_start: number; line_end: number; rule: string; snippet?: string }>;
   model_version: string;
   ruleset_version: string;
+}
+
+export interface RuleAuditItem {
+  rule_id: string;
+  domain: string;
+  measure: string;
+  description: string;
+  weight: number;
+  impact: string;
+  severity: string;
+  status: 'fired' | 'evaluated_not_fired' | 'inapplicable';
+  reason: string;
+  firings_count: number;
+  evidence_snippets: string[];
+  detection_condition: string;
+  clause_evaluations: Array<{ clause: string; passed: boolean }>;
+}
+
+export interface RuleAuditResponse {
+  application_id: string;
+  application_name: string;
+  ruleset_id: string;
+  ruleset_version: string;
+  total_rules: number;
+  fired_rules_count: number;
+  applicable_rules_count: number;
+  inapplicable_rules_count: number;
+  rules: RuleAuditItem[];
 }
 
 // ---- Phase 6: Findings, Reviews, Recommendations, Roadmap ----
@@ -812,11 +849,65 @@ export interface SimulationDetail extends SimulationSummary {
   scenario: ScenarioAnalysis;
 }
 
+export interface DashboardSummary {
+  total_applications: number;
+  total_components: number;
+  total_dependencies: number;
+  total_artifacts: number;
+  high_risk_findings_count: number;
+  avg_complexity: number;
+  avg_confidence: number;
+  portfolios_count: number;
+  readiness_distribution: Array<{ label: string; value: number; color: string }>;
+  recent_assessments: Array<{
+    id: string;
+    application: string;
+    date: string;
+    complexity: number;
+    confidence: number;
+    readiness: string;
+    status: string;
+  }>;
+  component_trend: Array<{ label: string; value: number }>;
+  domains: Array<{
+    id: string;
+    label: string;
+    shortLabel: string;
+    readiness: number;
+    complexity: number;
+    components: number;
+  }>;
+  top_risks: Array<{
+    id: string;
+    component: string;
+    application: string;
+    severity: string;
+    category: string;
+    evidence: string;
+  }>;
+  risk_counts?: {
+    high: number;
+    medium: number;
+    low: number;
+    unknown_evidence: number;
+  };
+  recommended_actions: Array<{
+    id: string;
+    action: string;
+    priority: string;
+    application: string;
+    effort: string;
+  }>;
+}
+
 // ---- Applications ----
 
 export const api = {
   // Health
   health: () => request<HealthStatus>('/api/health'),
+
+  // Portfolio Dashboard Summary
+  getDashboardSummary: () => request<DashboardSummary>('/api/dashboard/summary'),
 
   // Applications
   listApplications: () => request<Application[]>('/api/applications'),
@@ -847,6 +938,10 @@ export const api = {
   },
   importFolder: (appId: string) =>
     request<ImportFolderResult>(`/api/applications/${appId}/artifacts/import-folder`, {
+      method: 'POST',
+    }),
+  loadSampleArtifacts: (appId: string) =>
+    request<Artifact[]>(`/api/applications/${appId}/artifacts/load-sample`, {
       method: 'POST',
     }),
   artifactSummary: (appId: string) =>
@@ -901,6 +996,8 @@ export const api = {
     }),
   getComponentAssessment: (componentId: string) =>
     request<ComponentAssessment>(`/api/components/${componentId}/assessment`),
+  getRuleAudit: (appId: string) =>
+    request<RuleAuditResponse>(`/api/applications/${appId}/rules/audit`),
 
   // Phase 6: Findings, Reviews, Recommendations, Roadmap
   getFindings: (appId: string, params?: {
@@ -936,22 +1033,60 @@ export const api = {
     request<Comparison>(`/api/applications/compare?app_a=${appA}&app_b=${appB}`),
   getAssessmentHistory: (appId: string) =>
     request<AssessmentHistoryItem[]>(`/api/applications/${appId}/assessment-history`),
-  exportReport: (appId: string, format: 'json' | 'html' = 'json') =>
+  exportReport: (appId: string, format: 'json' | 'html' | 'pdf' = 'json') =>
     fetch(`/api/applications/${appId}/export?format=${format}`).then(async (res) => {
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const disposition = res.headers.get('Content-Disposition') || '';
       const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
-      const filename = filenameMatch ? filenameMatch[1] : `report.${format}`;
+      const filename = filenameMatch ? filenameMatch[1] : `report.${format === 'pdf' ? 'html' : format}`;
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (format === 'pdf') {
+        const w = window.open(url, '_blank');
+        if (!w) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     }),
+  exportFindingsCSV: (findings: Finding[], appName: string) => {
+    const headers = ['ID', 'Title', 'Domain', 'Severity', 'Evidence Class', 'Source File', 'Line Start', 'Line End', 'Detection Rule', 'Explanation', 'Recommended Action'];
+    const rows = findings.map((f) => [
+      `"${f.id}"`,
+      `"${(f.title || '').replace(/"/g, '""')}"`,
+      `"${(f.domain || '').replace(/"/g, '""')}"`,
+      `"${f.severity}"`,
+      `"${f.evidence_class}"`,
+      `"${f.source_filename || ''}"`,
+      f.line_start ?? '',
+      f.line_end ?? '',
+      `"${(f.detection_rule || '').replace(/"/g, '""')}"`,
+      `"${(f.explanation || '').replace(/"/g, '""')}"`,
+      `"${(f.recommended_action || '').replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reframex_findings_${(appName || 'app').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 
   // Phase 8: Refactoring Impact Simulator
   getComponentImpactExtended: (appId: string, componentId: string) =>
@@ -965,4 +1100,375 @@ export const api = {
     request<SimulationSummary[]>(`/api/applications/${appId}/simulations`),
   getSimulation: (appId: string, simulationId: string) =>
     request<SimulationDetail>(`/api/applications/${appId}/simulations/${simulationId}`),
+
+  // LLM Evaluation Layer (Part B)
+  getLLMStatus: () => request<LLMStatus>('/api/llm/status'),
+  testLLMConnection: (provider?: string) =>
+    request<any>('/api/llm/test', {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    }),
+  previewLLMPayload: (data: { task_type: 'T1' | 'T2' | 'T3'; target_id: string; send_mode?: string; redact?: boolean }) =>
+    request<LLMPreviewResponse>('/api/llm/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  evaluateLLM: (data: { task_type: 'T1' | 'T2' | 'T3'; target_id: string; provider_override?: string; send_mode?: string; redact?: boolean }) =>
+    request<LLMEvaluationItem>('/api/llm/evaluate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  evaluateBatchLLM: (data: { application_id: string; task_type?: 'T1' | 'T2' | 'T3'; provider_override?: string; limit?: number; force_refresh?: boolean }) =>
+    request<{ application_id: string; task_type: string; processed: number; evaluations: LLMEvaluationItem[] }>('/api/llm/evaluate-batch', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getLLMEvaluations: (appId: string, params?: { target_id?: string; task_type?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.target_id) qs.append('target_id', params.target_id);
+    if (params?.task_type) qs.append('task_type', params.task_type);
+    const q = qs.toString();
+    return request<LLMEvaluationItem[]>(`/api/llm/evaluations/${appId}${q ? `?${q}` : ''}`);
+  },
+  reviewLLMEvaluation: (evaluationId: string, data: { action: 'accept' | 'dismiss'; reviewer_notes?: string }) =>
+    request<any>(`/api/llm/review/${evaluationId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getLLMMetrics: (appId: string) =>
+    request<LLMMetrics>(`/api/llm/metrics/${appId}`),
+  getEvidenceMetrics: (appId: string) =>
+    request<EvidenceMetricsResponse>(`/api/applications/${appId}/evidence-metrics`),
+  exportEvidenceMetricsUrl: (appId: string) =>
+    `/api/applications/${appId}/evidence-metrics/export`,
+  getEvidenceMetricsDrilldown: (appId: string, metricType: string, category?: string) => {
+    const q = new URLSearchParams({ metric_type: metricType });
+    if (category) q.set('category', category);
+    return request<{ metric_type: string; category: string | null; total: number; items: any[] }>(
+      `/api/applications/${appId}/evidence-metrics/drilldown?${q.toString()}`
+    );
+  },
+
+  // Copilot Chat
+  chat: (data: ChatRequest) =>
+    request<ChatResponse>('/api/chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface ChatRequest {
+  application_id?: string | null;
+  page_context: string;
+  messages: ChatMessage[];
+  provider_override?: string;
+  api_key_override?: string;
+  model_override?: string;
+  page_data_snapshot?: Record<string, any>;
+}
+
+export interface ChatResponse {
+  reply: string;
+  provider: string;
+  model: string;
+  latency_ms: number;
+  page_context: string;
+  application_id: string | null;
+  citations: string[];
+}
+
+export interface LLMStatus {
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  model: string;
+  allowed_hosts: string[];
+  send_mode: string;
+  redact: boolean;
+  timeout_seconds: number;
+}
+
+export interface LLMPreviewResponse {
+  task_type: string;
+  target_id: string;
+  target_type: string;
+  application_id: string;
+  prompt_hash: string;
+  send_mode: string;
+  redacted: boolean;
+  redaction_stats?: {
+    total_redacted: number;
+    by_category: Record<string, number>;
+  };
+  system_prompt: string;
+  user_prompt: string;
+  snippet_range: [number, number];
+  estimated_tokens: number;
+}
+
+export interface LLMEvaluationItem {
+  id: string;
+  application_id: string;
+  task_type: string;
+  target_id: string;
+  target_type: string;
+  prompt_hash: string;
+  model_id: string;
+  provider: string;
+  send_mode: string;
+  status: string;
+  review_status: string;
+  reviewer_notes: string | null;
+  response: {
+    concurrence?: string;
+    rationale?: string;
+    cited_lines?: number[];
+    suggested_reclassification?: string | null;
+    summary?: string;
+    complexity_critique?: string;
+    missing_aspects?: string[];
+    critique?: string;
+    alternative_options?: string[];
+    risks?: string[];
+    citation_validation_passed?: boolean;
+    classification_label?: string;
+  };
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface LLMMetrics {
+  application_id: string;
+  total_evaluations: number;
+  validity_rate: number;
+  citation_accuracy: number;
+  engine_agreement_rate: number;
+  human_agreement_rate: number;
+  by_task: Record<string, number>;
+  by_status: Record<string, number>;
+  consistency_score: number;
+}
+
+export interface StaticMetrics {
+  findings_total: number;
+  by_severity: Record<string, number>;
+  by_domain: Record<string, number>;
+  by_evidence_classification: Record<string, number>;
+  traceability: {
+    total: number;
+    with_line_ref_count: number;
+    with_line_pct: number;
+    with_snippet_count: number;
+    with_snippet_pct: number;
+    lacking_line_refs_count: number;
+    lacking_line_refs: Array<{
+      id: string;
+      title: string;
+      domain: string;
+      severity: string;
+      detection_rule: string;
+      source_filename: string;
+      finding_type: string;
+    }>;
+  };
+  coverage: {
+    artifacts_total: number;
+    artifacts_by_support_level: Record<string, number>;
+    parse_success_rate: number;
+    domains_assessed_count: number;
+    domains_assessed: string[];
+    not_assessed_domains: string[];
+    unresolved_placeholders_count: number;
+    dynamic_calls: {
+      resolved: number;
+      unresolved: number;
+    };
+  };
+  rules: {
+    total_rules: number;
+    rules_fired: number;
+    by_measure: Record<string, { fired: number; total: number }>;
+  };
+  parser_accuracy: {
+    status?: string;
+    evidence_class?: string;
+    note?: string;
+    overall: {
+      precision: number | null;
+      recall: number | null;
+      f1: number | null;
+      sample_size_n: number | null;
+    } | null;
+    per_parser: Record<
+      string,
+      {
+        precision: number;
+        recall: number;
+        f1: number;
+        true_positive: number;
+        false_positive: number;
+        false_negative: number;
+        sample_size_n: number;
+      }
+    >;
+  };
+  human_review: {
+    confirmed: number;
+    rejected: number;
+    investigate: number;
+    pending: number;
+  };
+}
+
+export interface LLMMetricsData {
+  status: 'complete' | 'partial' | 'not_run' | 'disabled';
+  notice?: string;
+  n: number;
+  coverage?: {
+    findings_reviewed: number;
+    total_findings: number;
+    review_coverage_pct: number;
+    by_task: Record<string, number>;
+    n: number;
+  };
+  verdict_distribution?: {
+    supports: number;
+    contradicts: number;
+    insufficient: number;
+    n: number;
+  };
+  suggested_classification_distribution?: {
+    Verified: number;
+    Inferred: number;
+    Assumed: number;
+    Unknown: number;
+    n: number;
+  };
+  false_positive_likelihood?: {
+    low: number;
+    medium: number;
+    high: number;
+    n: number;
+  };
+  quality?: {
+    json_valid_rate: number;
+    schema_valid_rate: number;
+    citation_valid_rate: number;
+    invalid_citation_count: number;
+    n: number;
+  };
+  reliability?: {
+    consistency_rate: number;
+    latency_ms: { p50: number; p95: number; avg: number };
+    tokens_used: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    };
+    n: number;
+  };
+  human_outcome?: {
+    accepted: number;
+    dismissed: number;
+    pending: number;
+    n: number;
+  };
+}
+
+export interface ComparisonMetrics {
+  agreement_matrix: {
+    total_compared: number;
+    agree: number;
+    disagree: number;
+    insufficient: number;
+    agreement_rate_pct: number;
+    by_class: Record<string, { agree: number; disagree: number; insufficient: number }>;
+    n: number;
+  };
+  classification_differences: Array<{
+    finding_id: string;
+    rule: string;
+    title: string;
+    static_class: string;
+    llm_suggested_class: string;
+    rationale: string;
+  }>;
+  classification_differences_count: number;
+  disagreements: Array<{
+    finding_id: string;
+    rule: string;
+    title: string;
+    domain: string;
+    severity: string;
+    static_classification: string;
+    llm_verdict: string;
+    rationale: string;
+    validation_status: string;
+    reviewer_decision: string;
+    source_filename?: string;
+    line_start?: number;
+    line_end?: number;
+  }>;
+  disagreements_count: number;
+  independent_human_check: {
+    static_vs_human_agreement_pct: number;
+    static_human_n: number;
+    llm_vs_human_agreement_pct: number;
+    llm_human_n: number;
+  };
+  planted_false_positives: {
+    static: {
+      precision: number;
+      recall: number;
+      f1: number;
+      sample_size_n: number;
+    };
+    llm: {
+      precision: number;
+      recall: number;
+      f1: number;
+      sample_size_n: number;
+    };
+  };
+  blind_spots: {
+    llm_flagged_risks: Array<{
+      target_id: string;
+      risk_title: string;
+      classification: string;
+      status: string;
+      rationale: string;
+    }>;
+    llm_flagged_risks_count: number;
+    static_insufficient: Array<{
+      finding_id: string;
+      title: string;
+      rule: string;
+      rationale: string;
+    }>;
+    static_insufficient_count: number;
+  };
+  notice: string;
+}
+
+export interface EvidenceMetricsResponse {
+  metadata: {
+    application_id: string;
+    application_name: string;
+    as_of: string;
+    ruleset_id: string;
+    ruleset_version: string;
+    parser_versions: Record<string, string>;
+    llm_model: string;
+    prompt_versions: string[];
+    run_group_ids: string[];
+  };
+  static: StaticMetrics;
+  llm: LLMMetricsData;
+  comparison: ComparisonMetrics | null;
+  notice: string;
+}

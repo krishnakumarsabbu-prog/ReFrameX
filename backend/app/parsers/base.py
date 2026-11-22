@@ -57,10 +57,22 @@ class NormalizedComponent:
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
-    def deterministic_id(self, application_id: str) -> str:
-        """Stable ID: hash of application_id + artifact_id + type + name + location."""
-        raw = f"{application_id}|{self.source_artifact_id}|{self.component_type}|{self.name}|{self.line_start}|{self.line_end}"
-        return hashlib.sha256(raw.encode()).hexdigest()[:16]
+    def deterministic_id(
+        self,
+        application_id: str,
+        artifact_relative_path: str = "",
+        ordinal: int | None = None,
+    ) -> str:
+        """Stable deterministic component ID.
+        Formula: sha256(app_id | component_type | normalized_name | artifact_relative_path | ordinal)[:16]
+        Does NOT include artifact UUID or line numbers so that line shifts or re-uploads
+        do not churn component identity.
+        """
+        path = (artifact_relative_path or self.detected_properties.get("relative_path") or "").strip().lower()
+        norm_name = self.name.strip().upper()
+        ord_val = int(ordinal if ordinal is not None else self.detected_properties.get("ordinal", 1))
+        raw = f"{application_id}|{self.component_type}|{norm_name}|{path}|{ord_val}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass
@@ -104,7 +116,15 @@ class BaseParser:
                     error="Could not decode content as text",
                 )
             lines = preprocess_text(text, self._language())
-            return self._parse(artifact_id, filename, lines, category)
+            res = self._parse(artifact_id, filename, lines, category)
+            # Assign ordinals within file for each (component_type, normalized_name) (A6)
+            counts: dict[tuple[str, str], int] = {}
+            for comp in res.components:
+                key = (comp.component_type, comp.name.strip().upper())
+                counts[key] = counts.get(key, 0) + 1
+                if "ordinal" not in comp.detected_properties:
+                    comp.detected_properties["ordinal"] = str(counts[key])
+            return res
         except Exception as exc:
             return ParseResult(
                 parser_name=self.name,

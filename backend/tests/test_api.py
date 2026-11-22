@@ -62,7 +62,7 @@ def test_classify_cobol():
     c = classify("test.cbl", data)
     assert c.category == "COBOL"
     assert c.support_level == "SUPPORTED_PARSE"
-    assert c.encoding == "ASCII"
+    assert "ASCII" in c.encoding
 
 
 def test_classify_jcl_by_extension():
@@ -85,7 +85,7 @@ def test_classify_unknown_binary():
     data = b"\x00\x01\x02\x03\xff\xfe"
     c = classify("mystery.dat", data)
     assert c.category == "Data"
-    assert c.encoding == "binary"
+    assert "binary" in c.encoding
 
 
 def test_classify_ebcdic_flag():

@@ -47,6 +47,7 @@ class CopybookParser(BaseParser):
         field_count = 0
         total_pic_length = 0
         any_ambiguity = False
+        occurs_max = 0
 
         for line in lines:
             if line.is_comment or line.is_blank:
@@ -61,7 +62,7 @@ class CopybookParser(BaseParser):
                                       line.line_no - 1, has_redefines, has_occurs,
                                       has_depends_on, has_comp, has_comp3, has_88,
                                       field_count, total_pic_length, any_ambiguity,
-                                      result)
+                                      result, occurs_max=occurs_max)
                 current_01 = m01.group(1)
                 current_01_line = line.line_no
                 has_redefines = False
@@ -73,6 +74,7 @@ class CopybookParser(BaseParser):
                 field_count = 0
                 total_pic_length = 0
                 any_ambiguity = False
+                occurs_max = 0
                 continue
 
             # 88-level
@@ -98,6 +100,10 @@ class CopybookParser(BaseParser):
                 m_occurs = re.search(r"\bOCCURS\s+(\d+)", text, re.IGNORECASE)
                 if m_occurs:
                     has_occurs = True
+                    try:
+                        occurs_max = max(occurs_max, int(m_occurs.group(1)))
+                    except ValueError:
+                        pass
                 # Check for COMP/COMP-3
                 if re.search(r"\bCOMP\b", text, re.IGNORECASE) or \
                    re.search(r"\bCOMPUTATIONAL\b", text, re.IGNORECASE) or \
@@ -127,7 +133,7 @@ class CopybookParser(BaseParser):
                               last_line, has_redefines, has_occurs,
                               has_depends_on, has_comp, has_comp3, has_88,
                               field_count, total_pic_length, any_ambiguity,
-                              result)
+                              result, occurs_max=occurs_max)
 
         return result
 
@@ -174,7 +180,8 @@ class CopybookParser(BaseParser):
                      has_redefines: bool, has_occurs: bool, has_depends_on: bool,
                      has_comp: bool, has_comp3: bool, has_88: bool,
                      field_count: int, total_pic_length: int,
-                     any_ambiguity: bool, result: ParseResult) -> None:
+                     any_ambiguity: bool, result: ParseResult,
+                     occurs_max: int = 0) -> None:
         props: dict[str, str] = {
             "field_count": str(field_count),
         }
@@ -182,6 +189,8 @@ class CopybookParser(BaseParser):
             props["redefines"] = "yes"
         if has_occurs:
             props["occurs"] = "yes"
+            if occurs_max > 0:
+                props["occurs_max"] = str(occurs_max)
         if has_depends_on:
             props["depends_on"] = "yes"
         if has_comp:

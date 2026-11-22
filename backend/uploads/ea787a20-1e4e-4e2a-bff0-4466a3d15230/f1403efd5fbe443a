@@ -1,0 +1,19 @@
+MIGRATION INTELLIGENCE RUNBOOK - CLAIMS-MGR
+=====================================================
+Application ID: CLAIMS-MGR
+Business Domain: Insurance Policy & Claims Adjudication
+Target Platform: Red Hat OpenShift Container Platform
+
+1. Operational SLAs:
+   - Online CICS Service Hours: 06:00 - 22:00 EST. Response SLA < 350ms.
+   - Batch Window: Daily nightly execution starting 23:00 EST.
+   - Max Batch Duration: 2 hours 15 minutes.
+
+2. Disaster Recovery:
+   - Recovery Point Objective (RPO): < 15 minutes.
+   - Recovery Time Objective (RTO): 2 hours.
+
+3. OpenShift Migration Recommendation:
+   - CICS BMS 3270 Screens: Refactor to React SPA on OpenShift Routes.
+   - Batch Stream (DAILYCLM): Containerize into OpenShift CronJobs / Tekton Pipelines.
+   - Db2 Database: Migrate to PostgreSQL on Red Hat OpenShift Data Foundation (ODF).

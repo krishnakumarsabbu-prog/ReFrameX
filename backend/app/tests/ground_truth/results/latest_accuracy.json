@@ -1,22 +1,38 @@
 {
   "overall": {
-    "true_positive": 156,
-    "false_positive": 0,
-    "false_negative": 0,
-    "precision": 1.0,
-    "recall": 1.0,
-    "f1": 1.0
+    "true_positive": 155,
+    "false_positive": 1,
+    "false_negative": 1,
+    "precision": 0.9936,
+    "recall": 0.9936,
+    "f1": 0.9936
   },
   "per_parser": {
     "cobol": {
-      "true_positive": 99,
-      "false_positive": 0,
-      "false_negative": 0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "false_positives": [],
-      "false_negatives": []
+      "true_positive": 98,
+      "false_positive": 1,
+      "false_negative": 1,
+      "precision": 0.9899,
+      "recall": 0.9899,
+      "f1": 0.9899,
+      "false_positives": [
+        {
+          "name": "SUBPROG",
+          "type": "PROGRAM",
+          "line": 44,
+          "rule": "COBOL_DYNAMIC_CALL_ASSIGN",
+          "cause": "Not in ground truth"
+        }
+      ],
+      "false_negatives": [
+        {
+          "name": "WS-CALL-TARGET",
+          "type": "PROGRAM",
+          "line": 36,
+          "rule": "COBOL_CALL_DYNAMIC",
+          "cause": "Not found in parser output"
+        }
+      ]
     },
     "copybook": {
       "true_positive": 3,
@@ -71,14 +87,30 @@
   },
   "per_type": {
     "PROGRAM": {
-      "true_positive": 14,
-      "false_positive": 0,
-      "false_negative": 0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "false_positives": [],
-      "false_negatives": []
+      "true_positive": 13,
+      "false_positive": 1,
+      "false_negative": 1,
+      "precision": 0.9286,
+      "recall": 0.9286,
+      "f1": 0.9286,
+      "false_positives": [
+        {
+          "name": "SUBPROG",
+          "type": "PROGRAM",
+          "line": 44,
+          "rule": "COBOL_DYNAMIC_CALL_ASSIGN",
+          "cause": "Not in ground truth"
+        }
+      ],
+      "false_negatives": [
+        {
+          "name": "WS-CALL-TARGET",
+          "type": "PROGRAM",
+          "line": 36,
+          "rule": "COBOL_CALL_DYNAMIC",
+          "cause": "Not found in parser output"
+        }
+      ]
     },
     "MODULE": {
       "true_positive": 49,
@@ -221,12 +253,12 @@
       "category": "COBOL",
       "expected_count": 28,
       "actual_count": 28,
-      "true_positive": 28,
-      "false_positive": 0,
-      "false_negative": 0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0
+      "true_positive": 27,
+      "false_positive": 1,
+      "false_negative": 1,
+      "precision": 0.9643,
+      "recall": 0.9643,
+      "f1": 0.9643
     },
     {
       "file": "BATCHCTL.cbl",

@@ -6,13 +6,15 @@ import {
 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BentoCard from '@/components/BentoCard';
+import StatusBadge from '@/components/StatusBadge';
 import {
   api, type Application, type Finding, type UnknownsResponse,
   type ReviewRequest,
 } from '@/api/client';
+import { resolveActiveApp, setStoredActiveAppId } from '@/utils/activeApp';
 
 const SEVERITY_COLORS: Record<string, string> = {
-  high: '#E88555', medium: '#E8A838', low: '#4D8F86', info: '#8A8A93',
+  high: '#DC2626', medium: '#D97706', low: '#059669', info: '#2563EB',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -40,7 +42,7 @@ export default function UnknownsAndRisksPage() {
     try {
       const data = await api.listApplications();
       setApps(data);
-      setActiveApp(data.find((a) => a.is_active) ?? data[0] ?? null);
+      setActiveApp(resolveActiveApp(data));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load applications');
     }
@@ -64,6 +66,7 @@ export default function UnknownsAndRisksPage() {
   useEffect(() => { if (activeApp) loadUnknowns(activeApp.id); }, [activeApp, loadUnknowns]);
 
   async function handleSelectApp(id: string) {
+    setStoredActiveAppId(id);
     try {
       await api.updateApplication(id, { is_active: true });
       await loadApps();
@@ -92,11 +95,15 @@ export default function UnknownsAndRisksPage() {
   if (apps.length === 0 && !loading) {
     return (
       <>
-        <PageHeader title="Unknowns and Risks" breadcrumb={['ReframeX', 'Risks']} />
-        <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-5 text-accent"><AlertTriangle size={28} /></div>
-          <h2 className="text-xl font-semibold text-ink mb-2">No applications to analyze</h2>
-          <p className="text-ink-muted max-w-sm">Create an application and run an assessment to see missing evidence and risks here.</p>
+        <PageHeader title="Unknowns and Risks" breadcrumb={['ReFrameX', 'Risks']} />
+        <BentoCard className="mx-auto flex max-w-xl flex-col items-center p-12 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#E3E5E7] bg-[#F1F2F3] text-[#202124]">
+            <AlertTriangle size={24} />
+          </div>
+          <h2 className="mb-2 text-xl font-medium text-[#202124]">No applications to analyze</h2>
+          <p className="max-w-sm text-xs leading-relaxed text-[#777D83]">
+            Create an application and run an assessment to see missing evidence and risks here.
+          </p>
         </BentoCard>
       </>
     );
@@ -106,92 +113,104 @@ export default function UnknownsAndRisksPage() {
     <>
       <PageHeader
         title="Unknowns and Risks"
-        breadcrumb={['ReframeX', 'Risks']}
+        breadcrumb={['ReFrameX', 'Risks']}
         action={
           <div className="flex items-center gap-2">
             <div className="relative">
               <select
                 value={activeApp?.id ?? ''}
                 onChange={(e) => handleSelectApp(e.target.value)}
-                className="inner-glass rounded-pill px-3 py-1.5 pr-8 text-xs font-medium text-ink-muted appearance-none cursor-pointer hover:bg-white/35 transition-colors"
+                className="h-9 appearance-none rounded-xl border border-[#E3E5E7] bg-white pl-3.5 pr-8 font-sans text-xs font-medium text-[#202124] outline-none shadow-sm transition-all hover:border-[#202124] focus:border-[#202124]"
               >
                 {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
-              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+              <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A0A4A8]" />
             </div>
           </div>
         }
       />
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-tile bg-severity-high/10 text-severity-high text-sm">
-          <AlertCircle size={16} /> {error}
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-xs font-medium text-[#DC2626]">
+          <AlertCircle size={15} /> {error}
           <button onClick={() => setError(null)} className="ml-auto"><X size={14} /></button>
         </div>
       )}
 
-      {/* Info banner */}
-      <BentoCard className="p-4 mb-5" dense>
-        <div className="flex items-start gap-3">
-          <HelpCircle size={18} className="text-evidence-unknown shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-ink-muted">
-              Missing evidence is never evidence of simplicity. Unsupported artifacts and unresolved dependencies reduce assessment confidence.
-              Each item below should be resolved or reviewed before drawing migration conclusions.
-            </p>
-          </div>
+      {/* Clinical Evidence Guidance Banner */}
+      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-blue-50/40 via-white to-indigo-50/40 p-4 shadow-2xs">
+        <HelpCircle size={18} className="shrink-0 text-indigo-600 mt-0.5" />
+        <div className="text-xs leading-relaxed text-slate-600">
+          <span className="font-bold text-indigo-950">Evidence Integrity Principle: </span>
+          Missing evidence is never evidence of simplicity. Unsupported artifacts and unresolved dependencies reduce assessment confidence. Each item below should be resolved or reviewed before drawing migration conclusions.
         </div>
-      </BentoCard>
+      </div>
 
       {/* Summary by type */}
       {unknowns && unknowns.total > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-5">
-          {types.map((t) => (
-            <BentoCard key={t} className="p-4" dense>
-              <div className="text-xs font-medium text-ink-muted mb-1">{TYPE_LABELS[t] ?? t}</div>
-              <span className="text-2xl font-semibold text-ink">{unknowns.by_type[t]}</span>
-            </BentoCard>
-          ))}
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {types.map((t, idx) => {
+            const borders = [
+              'border-t-4 border-amber-500',
+              'border-t-4 border-rose-500',
+              'border-t-4 border-blue-500',
+              'border-t-4 border-purple-500',
+              'border-t-4 border-teal-500',
+            ];
+            const borderTheme = borders[idx % borders.length];
+            return (
+              <div key={t} className={`rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-sm transition-all ${borderTheme}`}>
+                <div className="text-xs font-semibold text-slate-500 mb-1">{TYPE_LABELS[t] ?? t}</div>
+                <span className="font-sans text-2xl font-bold tabular-nums text-slate-900">{unknowns.by_type[t]}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Search + filter */}
-      <BentoCard className="p-4 mb-5" dense>
+      <BentoCard className="mb-5 p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+          <div className="relative min-w-[200px] flex-1">
+            <SearchIcon size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#A0A4A8]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search unknowns..."
-              className="w-full pl-9 pr-3 py-2 rounded-tile bg-white/30 border border-solid-border/50 text-sm text-ink placeholder:text-ink-soft focus:outline-none focus:border-accent/50"
+              className="h-9 w-full rounded-xl border border-[#E3E5E7] bg-[#F1F2F3] pl-9 pr-3 text-xs text-[#202124] placeholder:text-[#A0A4A8] outline-none focus:border-[#202124] focus:bg-white transition-colors"
             />
           </div>
           <div className="relative">
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="inner-glass rounded-pill px-3 py-1.5 pr-8 text-xs font-medium text-ink-muted appearance-none cursor-pointer hover:bg-white/35"
+              className="h-9 appearance-none rounded-xl border border-[#E3E5E7] bg-[#F1F2F3] pl-3 pr-8 text-xs font-medium text-[#777D83] outline-none hover:border-[#202124] focus:border-[#202124] transition-colors"
             >
               <option value="">Type: All</option>
               {types.map((t) => <option key={t} value={t}>{TYPE_LABELS[t] ?? t}</option>)}
             </select>
-            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+            <ChevronDown size={11} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A0A4A8]" />
           </div>
         </div>
-        <div className="mt-2 text-xs text-ink-soft">
-          {filtered.length} of {unknowns?.total ?? 0} unknown items
+        <div className="mt-2.5 font-mono text-xs text-[#777D83] tabular-nums">
+          Showing {filtered.length} of {unknowns?.total ?? 0} unknown items
         </div>
       </BentoCard>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-ink-muted"><Loader2 size={24} className="animate-spin" /></div>
+        <div className="flex items-center justify-center py-20 text-[#777D83]">
+          <Loader2 size={24} className="animate-spin text-[#202124]" />
+        </div>
       ) : filtered.length === 0 ? (
-        <BentoCard className="p-12 flex flex-col items-center text-center" dense>
-          <div className="w-14 h-14 rounded-2xl bg-severity-low/15 flex items-center justify-center mb-4 text-severity-low"><CheckCircle2 size={24} /></div>
-          <h3 className="text-lg font-semibold text-ink mb-2">No unknown items</h3>
-          <p className="text-ink-muted max-w-sm">All evidence has been resolved or no missing-information items were detected. Run an assessment to regenerate this list.</p>
+        <BentoCard className="flex flex-col items-center p-12 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#E3E5E7] bg-[#FAFAFA] text-[#166534]">
+            <CheckCircle2 size={20} />
+          </div>
+          <h3 className="mb-1 text-base font-medium text-[#202124]">No unknown items</h3>
+          <p className="max-w-sm text-xs text-[#777D83]">
+            All evidence has been resolved or no missing-information items were detected.
+          </p>
         </BentoCard>
       ) : (
         <div className="space-y-2">
@@ -221,22 +240,26 @@ export default function UnknownsAndRisksPage() {
 }
 
 function UnknownRow({ finding, onClick }: { finding: Finding; onClick: () => void }) {
-  const sevColor = SEVERITY_COLORS[finding.severity] ?? '#8A8A93';
   return (
-    <BentoCard className="p-3.5" onClick={onClick} dense>
-      <div className="flex items-start gap-3">
-        <FileWarning size={16} className="text-evidence-unknown shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-ink">{finding.title}</span>
-          <p className="text-xs text-ink-soft mt-0.5 truncate">{finding.explanation}</p>
-        </div>
-        <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-medium shrink-0" style={{ background: `${sevColor}22`, color: sevColor }}>{finding.severity}</span>
-        {finding.reviewer_status && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-medium bg-accent-soft text-accent shrink-0">{finding.reviewer_status}</span>
-        )}
-        <ChevronRight size={14} className="text-ink-soft shrink-0" />
+    <div
+      onClick={onClick}
+      className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#E3E5E7] bg-white p-3.5 shadow-[0_2px_8px_rgba(25,30,35,0.02)] transition-all hover:border-[#202124] hover:shadow-sm"
+    >
+      <FileWarning size={16} className="shrink-0 text-[#202124] mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <span className="text-xs font-medium text-[#202124]">{finding.title}</span>
+        <p className="mt-0.5 text-xs text-[#777D83] line-clamp-1">{finding.explanation}</p>
       </div>
-    </BentoCard>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <StatusBadge severity={finding.severity as any} />
+        {finding.reviewer_status && (
+          <span className="rounded-lg border border-[#E3E5E7] bg-[#F1F2F3] px-2 py-0.5 font-mono text-[10px] font-medium text-[#202124]">
+            {finding.reviewer_status}
+          </span>
+        )}
+        <ChevronRight size={13} className="text-[#A0A4A8]" />
+      </div>
+    </div>
   );
 }
 
@@ -260,7 +283,7 @@ function FindingDetailDrawer({ finding, onClose, onReviewSubmitted }: {
     try {
       const req: ReviewRequest = {
         action: reviewAction,
-        reviewer_name: reviewerName || 'anonymous',
+        reviewer_name: reviewerName || 'architect',
         reviewer_role: reviewerRole,
         reason: reviewReason || undefined,
         notes: reviewNotes || undefined,
@@ -270,102 +293,59 @@ function FindingDetailDrawer({ finding, onClose, onReviewSubmitted }: {
         id: finding.id,
         reviewer_status: result.action,
         reviewer_notes: result.notes ?? null,
-        review_actions: [...finding.review_actions, result],
       });
-      setReviewAction(''); setReviewReason(''); setReviewNotes('');
+      onClose();
     } catch (e) {
-      setReviewError(e instanceof Error ? e.message : 'Failed to submit review');
+      setReviewError(e instanceof Error ? e.message : 'Review failed');
     } finally {
       setSubmitting(false);
     }
   }
 
-  const sevColor = SEVERITY_COLORS[finding.severity] ?? '#8A8A93';
-
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm" onClick={onClose}>
-      <div className="dense-surface w-full max-w-xl h-full overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
+    <div className="fixed inset-0 z-50 flex justify-end bg-[#202124]/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="h-full w-full max-w-md overflow-y-auto border-l border-[#E3E5E7] bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between border-b border-[#E3E5E7] pb-4">
           <div>
-            <h2 className="text-lg font-semibold text-ink">{finding.title}</h2>
-            <span className="text-xs font-mono text-accent">{finding.detection_rule}</span>
+            <span className="font-mono text-[11px] font-medium text-[#777D83]">UNKNOWN EVIDENCE GAP</span>
+            <h2 className="mt-1 text-sm font-medium text-[#202124]">{finding.title}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/40"><X size={18} /></button>
+          <button onClick={onClose} className="rounded-lg p-1 text-[#777D83] hover:bg-[#F1F2F3]"><X size={16} /></button>
         </div>
 
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-medium bg-evidence-unknown/15 text-evidence-unknown">Unknown</span>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-medium" style={{ background: `${sevColor}22`, color: sevColor }}>{finding.severity}</span>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-medium bg-ink/8 text-ink-muted">{TYPE_LABELS[finding.finding_type] ?? finding.finding_type}</span>
-        </div>
-
-        <div className="mb-5">
-          <h3 className="text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Explanation</h3>
-          <p className="text-sm text-ink-muted">{finding.explanation}</p>
-        </div>
-
-        {finding.recommended_action && (
-          <div className="mb-5 text-xs text-ink-muted px-3 py-2 rounded-tile bg-severity-low/10">
-            <span className="font-medium text-severity-low">Recommended action: </span>{finding.recommended_action}
+        <div className="space-y-4 text-xs">
+          <div className="rounded-xl border border-[#E3E5E7] bg-[#FAFAFA] p-3.5 text-[#202124] leading-relaxed">
+            {finding.explanation}
           </div>
-        )}
 
-        {/* Review history */}
-        {finding.review_actions.length > 0 && (
-          <div className="mb-5">
-            <h3 className="text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Review History</h3>
-            <div className="space-y-2">
-              {finding.review_actions.map((ra) => (
-                <div key={ra.id} className="px-3 py-2 rounded-tile bg-white/20 border border-solid-border/40">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-medium text-accent">{ra.action}</span>
-                    <span className="text-[10px] text-ink-soft">{ra.reviewer_name} ({ra.reviewer_role})</span>
-                    <span className="text-[10px] text-ink-soft ml-auto">{new Date(ra.created_at).toLocaleString()}</span>
-                  </div>
-                  {ra.reason && <p className="text-xs text-ink-muted">Reason: {ra.reason}</p>}
-                  {ra.notes && <p className="text-xs text-ink-muted">Notes: {ra.notes}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Review form */}
-        <div className="mb-5">
-          <h3 className="text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Add Reviewer Action</h3>
-          {reviewError && (
-            <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-tile bg-severity-high/10 text-severity-high text-xs">
-              <AlertCircle size={14} /> {reviewError}
-            </div>
-          )}
-          <div className="space-y-2 px-3 py-3 rounded-tile bg-white/20">
-            <div className="flex items-center gap-2 flex-wrap">
-              <select value={reviewAction} onChange={(e) => setReviewAction(e.target.value)} className="inner-glass rounded-pill px-3 py-1.5 text-xs text-ink-muted cursor-pointer">
+          <div className="rounded-2xl border border-[#E3E5E7] bg-white p-4">
+            <h4 className="mb-3 font-medium text-[#202124]">Architect Evidence Review</h4>
+            {reviewError && <div className="mb-2 text-[#DC2626]">{reviewError}</div>}
+            <div className="space-y-2.5">
+              <select
+                value={reviewAction}
+                onChange={(e) => setReviewAction(e.target.value)}
+                className="input-base text-xs"
+              >
                 <option value="">Select action...</option>
-                <option value="add_note">Add note (Viewer+)</option>
-                <option value="add_context">Add context (Viewer+)</option>
-                <option value="confirm">Confirm (Reviewer)</option>
-                <option value="reject">Reject (Reviewer)</option>
-                <option value="investigate">Mark for investigation (Reviewer)</option>
+                <option value="Resolved">Resolved / Provided missing copybook</option>
+                <option value="Accepted">Accepted as known risk</option>
+                <option value="Suppressed">False positive / Ignore</option>
               </select>
-              <input value={reviewerName} onChange={(e) => setReviewerName(e.target.value)} placeholder="Your name" className="px-2 py-1 rounded-tile bg-white/30 text-xs text-ink w-32 border border-solid-border/40" />
-              <select value={reviewerRole} onChange={(e) => setReviewerRole(e.target.value)} className="inner-glass rounded-pill px-2 py-1 text-xs text-ink-muted cursor-pointer">
-                <option value="Viewer">Viewer</option>
-                <option value="Reviewer">Reviewer</option>
-              </select>
+              <textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Notes on resolution or impact assessment..."
+                className="input-base text-xs min-h-[60px]"
+              />
+              <button
+                onClick={handleSubmitReview}
+                disabled={submitting || !reviewAction}
+                className="w-full rounded-xl bg-[#202124] py-2.5 text-xs font-medium text-white shadow-sm hover:bg-black disabled:opacity-50 transition-colors"
+              >
+                {submitting ? 'Submitting...' : 'Record Resolution'}
+              </button>
             </div>
-            {(reviewAction === 'reject' || reviewAction === 'investigate') && (
-              <input value={reviewReason} onChange={(e) => setReviewReason(e.target.value)} placeholder="Reason (required)" className="w-full px-2 py-1.5 rounded-tile bg-white/30 text-xs text-ink border border-solid-border/40" />
-            )}
-            <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="w-full px-2 py-1.5 rounded-tile bg-white/30 text-xs text-ink border border-solid-border/40 resize-none" />
-            <button
-              onClick={handleSubmitReview}
-              disabled={!reviewAction || submitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-accent text-white text-sm font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
-            >
-              {submitting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-              Submit Review
-            </button>
           </div>
         </div>
       </div>

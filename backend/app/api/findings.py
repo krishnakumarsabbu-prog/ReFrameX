@@ -152,13 +152,19 @@ def get_artifact_content_with_highlights(
     if not result:
         raise HTTPException(status_code=404, detail="Artifact not found")
     artifact, data = result
-    is_text = artifact.detected_encoding in ("UTF-8", "ASCII")
+    is_text = not artifact.detected_encoding.startswith("binary")
     content = None
     if is_text:
-        try:
-            content = data.decode("utf-8")
-        except UnicodeDecodeError:
-            content = data.decode("latin-1", errors="replace")
+        if "cp037" in artifact.detected_encoding or "EBCDIC" in artifact.detected_encoding:
+            try:
+                content = data.decode("cp037", errors="replace")
+            except Exception:
+                content = None
+        else:
+            try:
+                content = data.decode("utf-8")
+            except UnicodeDecodeError:
+                content = data.decode("latin-1", errors="replace")
 
     highlight_ranges: list[dict] = []
     if finding_id:

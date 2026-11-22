@@ -6,6 +6,7 @@ import AppLayout from '@/layouts/AppLayout';
 
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const ApplicationsPage = lazy(() => import('@/pages/ApplicationsPage'));
+const ApplicationOverviewPage = lazy(() => import('@/pages/ApplicationOverviewPage'));
 const ArtifactsPage = lazy(() => import('@/pages/ArtifactsPage'));
 const IntelligencePage = lazy(() => import('@/pages/IntelligencePage'));
 const DependenciesPage = lazy(() => import('@/pages/DependenciesPage'));
@@ -29,6 +30,9 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard activeTab={activeTab} />} />
             <Route path="/applications" element={<ApplicationsPage />} />
+            <Route path="/applications/overview" element={<ApplicationOverviewPage />} />
+            <Route path="/applications/:id/overview" element={<ApplicationOverviewPage />} />
+            <Route path="/overview" element={<ApplicationOverviewPage />} />
             <Route path="/artifacts" element={<ArtifactsPage />} />
             <Route path="/intelligence" element={<IntelligencePage />} />
             <Route path="/dependencies" element={<DependenciesPage />} />

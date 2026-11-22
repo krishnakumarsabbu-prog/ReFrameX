@@ -44,16 +44,19 @@ until a human confirms it.
 - All recommendation categorization
 - Parser versions and ruleset versions recorded with results
 
-### AI-Assisted (optional, disabled by default)
-- Finding analysis: optional AI can provide additional context for a finding
-- Refactoring pattern suggestions: optional AI can propose pattern hypotheses
-- **Never** changes scores or recommendations directly
-- Output is always classified as **Inferred** with:
-  - `generated_by`: identifier of the AI tool
-  - `model_name` and `model_version`: model identification
-  - `prompt_hash`: SHA-256 hash of the prompt for audit trail
-- UI displays an **"AI-assisted (Inferred)"** badge for any AI-derived content
-- Human confirmation is required before AI output influences any conclusion
+### AI-Assisted Evaluation Layer (Optional, Disabled by Default)
+- **T1: Finding Review**: Independent AI second opinion evaluating rule firings against sanitized code snippets.
+- **T2: Component Review**: Validates component boundaries, cyclomatic complexity attributes, and legacy indicators.
+- **T3: Recommendation Critique**: Evaluates candidate modernization hypotheses (OpenShift containerization, refactoring in place, distributed microservices, or mainframe retention).
+- **Safety & Consent**:
+  - `LLM_ENABLED=false` default (offline-by-default, zero network calls when disabled).
+  - Strict host allowlisting (`LLM_ALLOWED_HOSTS`).
+  - Automated regex PII/credential redaction (`LLM_REDACT=true`).
+  - Consent Preview Gate (`/api/llm/preview`) for human inspection prior to external transmission.
+- **Strict Invariance**:
+  - **Never** alters deterministic engine scores, classifications, or recommendations directly.
+  - Output is strictly classified as **"AI-assisted (Inferred)"** and stored in `llm_evaluations`.
+  - Human review lifecycle (`Pending` -> `Accepted` / `Dismissed`) before any modernization influence.
 
 ### Human Review (always required for final decisions)
 - Confirming or rejecting machine findings

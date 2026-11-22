@@ -6,6 +6,7 @@ import {
 import PageHeader from '@/components/PageHeader';
 import BentoCard from '@/components/BentoCard';
 import { api, type Application, type AssessmentHistoryItem } from '@/api/client';
+import { resolveActiveApp, setStoredActiveAppId } from '@/utils/activeApp';
 
 export default function EvidenceImprovementPage() {
   const [apps, setApps] = useState<Application[]>([]);
@@ -21,7 +22,7 @@ export default function EvidenceImprovementPage() {
       setApps(data);
       // Prefer the complex synthetic app for the demo
       const complex = data.find((a) => a.name.includes('ACCTLEDG'));
-      setActiveApp(complex ?? data.find((a) => a.is_active) ?? data[0] ?? null);
+      setActiveApp(complex ?? resolveActiveApp(data));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load applications');
     }
@@ -48,6 +49,7 @@ export default function EvidenceImprovementPage() {
   useEffect(() => { if (activeApp) loadHistory(activeApp.id); }, [activeApp, loadHistory]);
 
   async function handleSelectApp(id: string) {
+    setStoredActiveAppId(id);
     try {
       await api.updateApplication(id, { is_active: true });
       await loadApps();
@@ -63,10 +65,10 @@ export default function EvidenceImprovementPage() {
     return (
       <>
         <PageHeader title="Evidence Improvement Workflow" breadcrumb={['ReframeX', 'Evidence Improvement']} />
-        <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-5 text-accent"><History size={28} /></div>
-          <h2 className="text-xl font-semibold text-ink mb-2">No applications available</h2>
-          <p className="text-ink-muted max-w-sm">Create an application and run multiple assessments to see the evidence-improvement workflow.</p>
+        <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto rounded-2xl border border-[#E3E5E7] bg-white shadow-[0_4px_16px_rgba(25,30,35,0.04)]">
+          <div className="w-14 h-14 rounded-2xl bg-[#F1F2F3] border border-[#E3E5E7] flex items-center justify-center mb-4 text-[#202124]"><History size={24} /></div>
+          <h2 className="text-xl font-medium text-[#202124] mb-2">No applications available</h2>
+          <p className="text-sm text-[#777D83] max-w-sm">Create an application and run multiple assessments to see the evidence-improvement workflow.</p>
         </BentoCard>
       </>
     );
@@ -76,43 +78,43 @@ export default function EvidenceImprovementPage() {
     <>
       <PageHeader
         title="Evidence Improvement Workflow"
-        breadcrumb={['ReframeX', 'Evidence Improvement']}
+        breadcrumb={['ReFrameX', 'Evidence Improvement']}
         action={
           <div className="relative">
             <select
               value={activeApp?.id ?? ''}
               onChange={(e) => handleSelectApp(e.target.value)}
-              className="inner-glass rounded-pill px-3 py-1.5 pr-8 text-xs font-medium text-ink-muted appearance-none cursor-pointer hover:bg-white/35 transition-colors"
+              className="h-9 appearance-none rounded-xl border border-[#E3E5E7] bg-white pl-3.5 pr-8 font-mono text-xs font-medium text-[#202124] outline-none transition-all focus:border-[#202124] shadow-sm cursor-pointer"
             >
               {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
-            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#777D83]" />
           </div>
         }
       />
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-tile bg-severity-high/10 text-severity-high text-sm">
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl border border-[#FCA5A5]/40 bg-[#FEF2F2] text-[#991B1B] text-xs">
           <AlertCircle size={16} /> {error}
           <button onClick={() => setError(null)} className="ml-auto"><X size={14} /></button>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-ink-muted"><Loader2 size={24} className="animate-spin" /></div>
+        <div className="flex items-center justify-center py-20 text-[#777D83]"><Loader2 size={24} className="animate-spin text-[#202124]" /></div>
       ) : history.length === 0 ? (
-        <BentoCard className="p-12 flex flex-col items-center text-center" dense>
-          <div className="w-14 h-14 rounded-2xl bg-accent-soft flex items-center justify-center mb-4 text-accent"><History size={24} /></div>
-          <h3 className="text-lg font-semibold text-ink mb-2">No assessment history</h3>
-          <p className="text-ink-muted max-w-sm">Run an assessment for this application to start building history.</p>
+        <BentoCard className="p-12 flex flex-col items-center text-center rounded-2xl border border-[#E3E5E7] bg-white shadow-[0_4px_16px_rgba(25,30,35,0.04)]" dense>
+          <div className="w-14 h-14 rounded-2xl bg-[#F1F2F3] border border-[#E3E5E7] flex items-center justify-center mb-4 text-[#202124]"><History size={24} /></div>
+          <h3 className="text-lg font-medium text-[#202124] mb-2">No assessment history</h3>
+          <p className="text-sm text-[#777D83] max-w-sm">Run an assessment for this application to start building history.</p>
         </BentoCard>
       ) : (
         <div className="space-y-4">
           {/* Info banner */}
-          <BentoCard className="p-3" dense>
-            <div className="flex items-start gap-2">
-              <Info size={14} className="text-ink-soft shrink-0 mt-0.5" />
-              <p className="text-xs text-ink-muted">
+          <BentoCard className="p-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-blue-50/40 via-white to-indigo-50/40 shadow-2xs" dense>
+            <div className="flex items-start gap-2.5">
+              <Info size={16} className="text-indigo-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-600 leading-relaxed">
                 This view demonstrates the evidence-improvement workflow: withhold an artifact, assess, then add it and reassess.
                 Each assessment version is stored and comparable. Complexity changes only where new evidence truly reveals new complexity.
               </p>
@@ -120,32 +122,32 @@ export default function EvidenceImprovementPage() {
           </BentoCard>
 
           {/* History timeline */}
-          <BentoCard className="p-5" dense>
-            <h3 className="text-sm font-semibold text-ink mb-3">Assessment History ({history.length} versions)</h3>
+          <BentoCard className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs" dense>
+            <h3 className="text-base font-bold text-slate-900 mb-3">Assessment History ({history.length} versions)</h3>
             <div className="space-y-2">
               {history.map((h, idx) => (
                 <div
                   key={h.id}
-                  className={`flex items-center gap-3 p-3 rounded-tile transition-colors cursor-pointer ${
-                    h.is_current ? 'bg-accent/8 border border-accent/20' : 'inner-glass hover:bg-white/35'
-                  }`}
+                  className={`flex items-center gap-3.5 p-3.5 rounded-xl transition-all cursor-pointer border ${h.is_current
+                      ? 'bg-indigo-50/40 border-indigo-300 border-l-4 border-l-indigo-600 shadow-2xs'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                    }`}
                   onClick={() => {
                     if (idx < history.length - 1) {
                       setSelectedVersions([history[idx + 1].version, h.version]);
                     }
                   }}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    h.is_current ? 'bg-accent text-white' : 'bg-white/40 text-ink-muted'
-                  }`}>v{h.version}</div>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${h.is_current ? 'bg-gradient-to-tr from-indigo-600 to-blue-600 text-white shadow-2xs' : 'bg-slate-100 border border-slate-200 text-slate-600'
+                    }`}>v{h.version}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-ink">
+                      <span className="text-sm font-medium text-[#202124]">
                         {h.is_current ? 'Current Assessment' : `Assessment v${h.version}`}
                       </span>
-                      {h.human_reviewed && <span className="text-[10px] px-1.5 py-0.5 rounded-pill bg-success/15 text-success">Reviewed</span>}
+                      {h.human_reviewed && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]/60 font-medium">Reviewed</span>}
                     </div>
-                    <div className="text-xs text-ink-soft mt-0.5">
+                    <div className="text-xs text-[#A0A4A8] mt-0.5">
                       {new Date(h.computed_at).toLocaleString()} | {h.duration_ms}ms
                     </div>
                   </div>
@@ -166,8 +168,8 @@ export default function EvidenceImprovementPage() {
 
           {/* Version selector for custom comparison */}
           {history.length >= 2 && (
-            <BentoCard className="p-5" dense>
-              <h3 className="text-sm font-semibold text-ink mb-3">Custom Version Comparison</h3>
+            <BentoCard className="p-5 sm:p-6 rounded-2xl border border-[#E3E5E7] bg-white shadow-[0_4px_16px_rgba(25,30,35,0.04)]" dense>
+              <h3 className="text-base font-medium text-[#202124] mb-3">Custom Version Comparison</h3>
               <div className="flex items-center gap-3">
                 <VersionSelector
                   history={history}
@@ -175,7 +177,7 @@ export default function EvidenceImprovementPage() {
                   onChange={(v) => setSelectedVersions([v, selectedVersions?.[1] ?? history[0].version])}
                   label="Before"
                 />
-                <ArrowRight size={14} className="text-ink-soft" />
+                <ArrowRight size={14} className="text-[#A0A4A8]" />
                 <VersionSelector
                   history={history}
                   value={selectedVersions?.[1] ?? history[0].version}
@@ -215,19 +217,19 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
   const newSteps = newNextSteps.filter((s) => !oldNextSteps.includes(s));
 
   return (
-    <BentoCard className="overflow-hidden" dense>
+    <BentoCard className="overflow-hidden rounded-2xl border border-[#E3E5E7] bg-white shadow-[0_4px_16px_rgba(25,30,35,0.04)]" dense>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/40 transition-colors"
+        className="w-full flex items-center gap-2.5 px-5 py-4 text-left hover:bg-[#FAFAFA] transition-colors"
       >
-        {expanded ? <ChevronDown size={14} className="text-ink-soft" /> : <ChevronRight size={14} className="text-ink-soft" />}
-        <GitCompare size={16} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Before/After Comparison (v{oldVersion.version} → v{newVersion.version})</h3>
+        {expanded ? <ChevronDown size={14} className="text-[#777D83]" /> : <ChevronRight size={14} className="text-[#777D83]" />}
+        <GitCompare size={16} className="text-[#202124]" />
+        <h3 className="text-base font-medium text-[#202124]">Before/After Comparison (v{oldVersion.version} → v{newVersion.version})</h3>
       </button>
       {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-solid-border/40 space-y-4">
+        <div className="px-5 pb-5 pt-3 border-t border-[#E3E5E7] space-y-4">
           {/* Score deltas */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <DeltaCard
               label="Migration Complexity"
               oldValue={oldVersion.complexity_score}
@@ -235,6 +237,7 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
               delta={complexityDelta}
               oldClass={oldVersion.complexity_classification}
               newClass={newVersion.complexity_classification}
+              topBorder="border-t-4 border-amber-500"
             />
             <DeltaCard
               label="Assessment Confidence"
@@ -243,6 +246,7 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
               delta={confidenceDelta}
               oldClass={oldVersion.confidence_classification}
               newClass={newVersion.confidence_classification}
+              topBorder="border-t-4 border-blue-500"
             />
             <DeltaCard
               label="Migration Readiness"
@@ -251,15 +255,20 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
               delta={readinessDelta}
               oldClass={oldVersion.readiness_classification}
               newClass={newVersion.readiness_classification}
+              topBorder="border-t-4 border-emerald-500"
             />
           </div>
 
           {/* Evidence gaps resolved */}
           {resolvedGaps.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-success uppercase tracking-wide mb-1">Evidence Gaps Resolved ({resolvedGaps.length})</div>
-              <ul className="space-y-0.5">
-                {resolvedGaps.map((g, i) => <li key={i} className="text-xs text-ink-muted flex gap-2"><span className="text-success shrink-0">✓</span>{g}</li>)}
+              <div className="text-[11px] font-semibold text-[#065F46] uppercase tracking-wider mb-1.5">Evidence Gaps Resolved ({resolvedGaps.length})</div>
+              <ul className="space-y-1">
+                {resolvedGaps.map((g, i) => (
+                  <li key={i} className="text-xs text-[#777D83] flex gap-2">
+                    <span className="text-[#065F46] font-semibold shrink-0">✓</span>{g}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -267,9 +276,13 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
           {/* New evidence gaps */}
           {newGaps.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-severity-medium uppercase tracking-wide mb-1">New Evidence Gaps ({newGaps.length})</div>
-              <ul className="space-y-0.5">
-                {newGaps.map((g, i) => <li key={i} className="text-xs text-ink-muted flex gap-2"><span className="text-severity-medium shrink-0">!</span>{g}</li>)}
+              <div className="text-[11px] font-semibold text-[#B45309] uppercase tracking-wider mb-1.5">New Evidence Gaps ({newGaps.length})</div>
+              <ul className="space-y-1">
+                {newGaps.map((g, i) => (
+                  <li key={i} className="text-xs text-[#777D83] flex gap-2">
+                    <span className="text-[#B45309] font-semibold shrink-0">!</span>{g}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -277,9 +290,13 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
           {/* Newly fired rules */}
           {newRules.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-accent uppercase tracking-wide mb-1">Newly Detected Rules ({newRules.length})</div>
-              <ul className="space-y-0.5">
-                {newRules.map((r, i) => <li key={i} className="text-xs text-ink-muted flex gap-2"><span className="text-accent shrink-0">+</span>{r.rule_id}: {r.description as string}</li>)}
+              <div className="text-[11px] font-semibold text-[#202124] uppercase tracking-wider mb-1.5">Newly Detected Rules ({newRules.length})</div>
+              <ul className="space-y-1">
+                {newRules.map((r, i) => (
+                  <li key={i} className="text-xs text-[#777D83] flex gap-2">
+                    <span className="text-[#202124] font-semibold shrink-0">+</span>{r.rule_id}: {r.description as string}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -287,9 +304,13 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
           {/* Rules no longer firing */}
           {removedRules.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-ink-soft uppercase tracking-wide mb-1">Rules No Longer Firing ({removedRules.length})</div>
-              <ul className="space-y-0.5">
-                {removedRules.map((r, i) => <li key={i} className="text-xs text-ink-muted flex gap-2"><span className="text-ink-soft shrink-0">-</span>{r.rule_id}: {r.description as string}</li>)}
+              <div className="text-[11px] font-semibold text-[#A0A4A8] uppercase tracking-wider mb-1.5">Rules No Longer Firing ({removedRules.length})</div>
+              <ul className="space-y-1">
+                {removedRules.map((r, i) => (
+                  <li key={i} className="text-xs text-[#A0A4A8] flex gap-2">
+                    <span className="text-[#A0A4A8] font-semibold shrink-0">-</span>{r.rule_id}: {r.description as string}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -297,15 +318,19 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
           {/* Changed next steps */}
           {newSteps.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-ink-soft uppercase tracking-wide mb-1">New/Changed Next Steps ({newSteps.length})</div>
-              <ul className="space-y-0.5">
-                {newSteps.map((s, i) => <li key={i} className="text-xs text-ink-muted flex gap-2"><span className="text-accent shrink-0">→</span>{s}</li>)}
+              <div className="text-[11px] font-semibold text-[#777D83] uppercase tracking-wider mb-1.5">New/Changed Next Steps ({newSteps.length})</div>
+              <ul className="space-y-1">
+                {newSteps.map((s, i) => (
+                  <li key={i} className="text-xs text-[#777D83] flex gap-2">
+                    <span className="text-[#202124] font-semibold shrink-0">→</span>{s}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
 
           {resolvedGaps.length === 0 && newGaps.length === 0 && newRules.length === 0 && removedRules.length === 0 && (
-            <p className="text-xs text-ink-soft">No changes detected between versions.</p>
+            <p className="text-xs text-[#A0A4A8]">No changes detected between versions.</p>
           )}
         </div>
       )}
@@ -313,33 +338,36 @@ function BeforeAfterComparison({ oldVersion, newVersion }: {
   );
 }
 
-function DeltaCard({ label, oldValue, newValue, delta, oldClass, newClass }: {
+function DeltaCard({ label, oldValue, newValue, delta, oldClass, newClass, topBorder }: {
   label: string;
   oldValue: number;
   newValue: number;
   delta: number;
   oldClass: string;
   newClass: string;
+  topBorder?: string;
 }) {
   const isNeutral = delta === 0;
   const isPositive = delta > 0;
   return (
-    <div className="p-3 rounded-tile inner-glass">
-      <div className="text-[10px] text-ink-soft uppercase tracking-wide">{label}</div>
-      <div className="flex items-baseline gap-2 mt-1">
-        <span className="text-xs text-ink-soft">{oldValue}</span>
-        <ArrowRight size={10} className="text-ink-soft" />
-        <span className="text-sm font-semibold text-ink">{newValue}</span>
-        <span className={`text-xs font-medium ${isNeutral ? 'text-ink-muted' : isPositive ? 'text-severity-medium' : 'text-success'}`}>
+    <div className={`p-4 rounded-xl border border-slate-200/80 bg-white shadow-2xs ${topBorder ?? ''}`}>
+      <div className="text-[11px] text-[#A0A4A8] uppercase tracking-wider font-medium">{label}</div>
+      <div className="flex items-baseline gap-2 mt-1.5">
+        <span className="text-xs text-[#A0A4A8] tabular-nums">{oldValue}</span>
+        <ArrowRight size={10} className="text-[#A0A4A8]" />
+        <span className="text-base font-medium text-[#202124] tabular-nums">{newValue}</span>
+        <span className={`text-xs font-medium tabular-nums ${isNeutral ? 'text-[#A0A4A8]' : isPositive ? 'text-[#B45309]' : 'text-[#065F46]'}`}>
           {isNeutral ? '' : isPositive ? '+' : ''}{delta.toFixed(1)}
         </span>
       </div>
-      <div className="flex items-center gap-1.5 mt-0.5">
-        <span className="text-[10px] text-ink-soft">{oldClass}</span>
-        {oldClass !== newClass && <>
-          <ArrowRight size={8} className="text-ink-soft" />
-          <span className="text-[10px] font-medium text-accent">{newClass}</span>
-        </>}
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className="text-[11px] text-[#777D83]">{oldClass}</span>
+        {oldClass !== newClass && (
+          <>
+            <ArrowRight size={8} className="text-[#A0A4A8]" />
+            <span className="text-[11px] font-medium text-[#202124]">{newClass}</span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -348,8 +376,8 @@ function DeltaCard({ label, oldValue, newValue, delta, oldClass, newClass }: {
 function ScoreMini({ label, value }: { label: string; value: number }) {
   return (
     <div className="text-center">
-      <div className="text-[9px] text-ink-soft uppercase">{label}</div>
-      <div className="text-sm font-semibold text-ink">{value.toFixed(0)}</div>
+      <div className="text-[10px] text-[#A0A4A8] uppercase font-medium tracking-wider">{label}</div>
+      <div className="text-base font-medium text-[#202124] tabular-nums">{value.toFixed(0)}</div>
     </div>
   );
 }
@@ -362,15 +390,15 @@ function VersionSelector({ history, value, onChange, label }: {
 }) {
   return (
     <div className="relative">
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-ink-soft">{label}</span>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-medium text-[#777D83]">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="inner-glass rounded-pill pl-12 pr-7 py-1.5 text-xs font-medium text-ink-muted appearance-none cursor-pointer hover:bg-white/35 transition-colors"
+        className="h-9 rounded-xl border border-[#E3E5E7] bg-white pl-14 pr-8 text-xs font-medium text-[#202124] appearance-none cursor-pointer hover:border-[#202124]/40 focus:border-[#202124] transition-colors outline-none shadow-sm"
       >
         {history.map((h) => <option key={h.id} value={h.version}>v{h.version} — {new Date(h.computed_at).toLocaleString()}</option>)}
       </select>
-      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+      <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#777D83] pointer-events-none" />
     </div>
   );
 }

@@ -33,6 +33,17 @@ const SHORT_LABELS: Record<string, string> = {
   operational_nonfunctional: 'Operational',
 };
 
+const softGlassTooltipStyle = {
+  backgroundColor: '#FFFFFF',
+  color: '#202124',
+  border: '1px solid #E3E5E7',
+  borderRadius: '12px',
+  boxShadow: '0 8px 24px rgba(25, 30, 35, 0.08)',
+  fontSize: '12px',
+  fontFamily: 'Inter, sans-serif',
+  padding: '8px 12px',
+} as const;
+
 export default function ComparePage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [appAId, setAppAId] = useState<string>('');
@@ -90,11 +101,11 @@ export default function ComparePage() {
   if (apps.length === 0 && !loading) {
     return (
       <>
-        <PageHeader title="Application Comparison" breadcrumb={['ReframeX', 'Compare']} />
+        <PageHeader title="Application Comparison" breadcrumb={['ReFrameX', 'Compare']} />
         <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-5 text-accent"><Columns3 size={28} /></div>
-          <h2 className="text-xl font-semibold text-ink mb-2">No applications to compare</h2>
-          <p className="text-ink-muted max-w-sm">Create at least two applications, upload artifacts, and run assessments to compare them.</p>
+          <div className="w-16 h-16 rounded-2xl bg-[#F1F2F3] border border-[#E3E5E7] flex items-center justify-center mb-5 text-[#202124]"><Columns3 size={28} /></div>
+          <h2 className="text-xl font-medium text-[#202124] mb-2">No applications to compare</h2>
+          <p className="text-[#777D83] max-w-sm text-xs">Create at least two applications, upload artifacts, and run assessments to compare them.</p>
         </BentoCard>
       </>
     );
@@ -103,11 +114,11 @@ export default function ComparePage() {
   if (apps.length < 2) {
     return (
       <>
-        <PageHeader title="Application Comparison" breadcrumb={['ReframeX', 'Compare']} />
+        <PageHeader title="Application Comparison" breadcrumb={['ReFrameX', 'Compare']} />
         <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-5 text-accent"><Columns3 size={28} /></div>
-          <h2 className="text-xl font-semibold text-ink mb-2">Need at least two applications</h2>
-          <p className="text-ink-muted max-w-sm">You currently have {apps.length} application(s). Create at least one more to enable comparison.</p>
+          <div className="w-16 h-16 rounded-2xl bg-[#F1F2F3] border border-[#E3E5E7] flex items-center justify-center mb-5 text-[#202124]"><Columns3 size={28} /></div>
+          <h2 className="text-xl font-medium text-[#202124] mb-2">Need at least two applications</h2>
+          <p className="text-[#777D83] max-w-sm text-xs">You currently have {apps.length} application(s). Create at least one more to enable comparison.</p>
         </BentoCard>
       </>
     );
@@ -117,7 +128,7 @@ export default function ComparePage() {
     <>
       <PageHeader
         title="Application Comparison"
-        breadcrumb={['ReframeX', 'Compare']}
+        breadcrumb={['ReFrameX', 'Compare']}
         action={
           <div className="flex items-center gap-2">
             <AppSelect
@@ -126,7 +137,7 @@ export default function ComparePage() {
               value={appAId}
               onChange={setAppAId}
             />
-            <ArrowRight size={14} className="text-ink-soft" />
+            <ArrowRight size={14} className="text-[#A0A4A8]" />
             <AppSelect
               label="B"
               apps={apps}
@@ -138,38 +149,38 @@ export default function ComparePage() {
       />
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-tile bg-severity-high/10 text-severity-high text-sm">
-          <AlertCircle size={16} /> {error}
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626] text-xs font-medium">
+          <AlertCircle size={15} /> {error}
           <button onClick={() => setError(null)} className="ml-auto"><X size={14} /></button>
         </div>
       )}
 
       {appAId === appBId && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-tile bg-severity-medium/10 text-severity-medium text-sm">
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] text-[#92400E] text-xs font-medium">
           <Info size={16} /> Select two different applications to compare.
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-ink-muted"><Loader2 size={24} className="animate-spin" /></div>
+        <div className="flex items-center justify-center py-20 text-[#777D83]"><Loader2 size={24} className="animate-spin text-[#202124]" /></div>
       ) : comparison ? (
         <div className="space-y-4">
           {/* Version warning */}
           {comparison.version_warning && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-tile bg-severity-medium/15 border border-severity-medium/30">
-              <AlertTriangle size={18} className="text-severity-medium shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[#FFFBEB] border border-[#FDE68A]">
+              <AlertTriangle size={18} className="text-[#D97706] shrink-0 mt-0.5" />
               <div>
-                <div className="text-sm font-semibold text-ink">Version Mismatch Warning</div>
-                <p className="text-xs text-ink-muted mt-0.5">{comparison.version_warning.message}</p>
+                <div className="text-sm font-medium text-[#202124]">Version Mismatch Warning</div>
+                <p className="text-xs text-[#777D83] mt-0.5">{comparison.version_warning.message}</p>
               </div>
             </div>
           )}
 
           {/* Comparison note */}
-          <BentoCard className="p-3" dense>
+          <BentoCard className="p-4" dense>
             <div className="flex items-start gap-2">
-              <Info size={14} className="text-ink-soft shrink-0 mt-0.5" />
-              <p className="text-xs text-ink-muted">{comparison.comparison_note}</p>
+              <Info size={14} className="text-[#777D83] shrink-0 mt-0.5" />
+              <p className="text-xs text-[#777D83]">{comparison.comparison_note}</p>
             </div>
           </BentoCard>
 
@@ -181,7 +192,7 @@ export default function ComparePage() {
 
           {/* Delta summary */}
           <BentoCard className="p-5" dense>
-            <h3 className="text-sm font-semibold text-ink mb-3">Comparison Deltas (B vs A)</h3>
+            <h3 className="text-base font-medium text-[#202124] mb-3">Comparison Deltas (B vs A)</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <DeltaTile label="Artifacts" value={comparison.deltas.artifact_count_delta} />
               <DeltaTile label="Components" value={comparison.deltas.component_count_delta} />
@@ -195,53 +206,53 @@ export default function ComparePage() {
           </BentoCard>
 
           {/* Radar chart */}
-          <BentoCard className="p-5" dense>
-            <h3 className="text-sm font-semibold text-ink mb-3">Domain Complexity Comparison</h3>
+          <BentoCard className="p-6" dense>
+            <h3 className="text-base font-medium text-[#202124] mb-3">Domain Complexity Comparison</h3>
             <div className="h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={radarData()}>
-                  <PolarGrid stroke="rgba(0,0,0,0.1)" />
-                  <PolarAngleAxis dataKey="domain" tick={{ fill: '#6B5B4A', fontSize: 11 }} />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fill: '#8A7A6A', fontSize: 9 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #D9C1A2', borderRadius: 8, fontSize: 12 }}
-                  />
-                  <Radar name={comparison.application_a.application_name} dataKey="appA" stroke="#0D7490" fill="#0D7490" fillOpacity={0.3} />
-                  <Radar name={comparison.application_b.application_name} dataKey="appB" stroke="#7668AE" fill="#7668AE" fillOpacity={0.3} />
+                  <PolarGrid stroke="#E3E5E7" />
+                  <PolarAngleAxis dataKey="domain" tick={{ fill: '#777D83', fontSize: 11 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fill: '#A0A4A8', fontSize: 9 }} />
+                  <Tooltip contentStyle={softGlassTooltipStyle} />
+                  <Radar name={comparison.application_a.application_name} dataKey="appA" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.18} />
+                  <Radar name={comparison.application_b.application_name} dataKey="appB" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.18} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex items-center justify-center gap-6 mt-2">
+            <div className="flex items-center justify-center gap-6 mt-3">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#0D7490' }} />
-                <span className="text-xs text-ink-muted">{comparison.application_a.application_name}</span>
+                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span className="text-xs text-blue-900 font-semibold">{comparison.application_a.application_name} (A)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#4D8F86' }} />
-                <span className="text-xs text-ink-muted">{comparison.application_b.application_name}</span>
+                <span className="w-3 h-3 rounded-full bg-purple-500" />
+                <span className="text-xs text-purple-900 font-semibold">{comparison.application_b.application_name} (B)</span>
               </div>
             </div>
           </BentoCard>
 
           {/* Domain delta table */}
-          <BentoCard className="p-5" dense>
-            <h3 className="text-sm font-semibold text-ink mb-3">Domain Score Deltas</h3>
+          <BentoCard className="p-0 overflow-hidden" dense>
+            <div className="px-5 py-3.5 border-b border-[#E3E5E7] bg-[#FAFAFA]">
+              <h3 className="text-sm font-medium text-[#202124]">Domain Score Deltas</h3>
+            </div>
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-ink-soft">
-                  <th className="text-left py-1.5 font-medium">Domain</th>
-                  <th className="text-center py-1.5 font-medium">Complexity Δ</th>
-                  <th className="text-center py-1.5 font-medium">Confidence Δ</th>
-                  <th className="text-center py-1.5 font-medium">Readiness Δ</th>
+                <tr className="border-b border-[#E3E5E7] bg-[#F1F2F3] text-left text-[11px] font-medium text-[#777D83] uppercase tracking-wide">
+                  <th className="py-2.5 px-4 font-medium">Domain</th>
+                  <th className="text-center py-2.5 px-4 font-medium">Complexity Δ</th>
+                  <th className="text-center py-2.5 px-4 font-medium">Confidence Δ</th>
+                  <th className="text-center py-2.5 px-4 font-medium">Readiness Δ</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-[#E3E5E7]">
                 {Object.entries(comparison.deltas.domain_deltas).map(([key, d]) => (
-                  <tr key={key} className="border-t border-solid-border/30">
-                    <td className="py-1.5 text-ink">{d.label}</td>
-                    <td className="py-1.5 text-center text-ink-muted">{d.complexity_delta !== null ? `${d.complexity_delta > 0 ? '+' : ''}${d.complexity_delta}` : 'N/A'}</td>
-                    <td className="py-1.5 text-center text-ink-muted">{d.confidence_delta !== null ? `${d.confidence_delta > 0 ? '+' : ''}${d.confidence_delta}` : 'N/A'}</td>
-                    <td className="py-1.5 text-center text-ink-muted">{d.readiness_delta !== null ? `${d.readiness_delta > 0 ? '+' : ''}${d.readiness_delta}` : 'N/A'}</td>
+                  <tr key={key} className="hover:bg-[#F1F2F3]/50 transition-colors">
+                    <td className="py-2.5 px-4 text-[#202124] font-medium">{d.label}</td>
+                    <td className="py-2.5 px-4 text-center text-[#777D83] tabular-nums">{d.complexity_delta !== null ? `${d.complexity_delta > 0 ? '+' : ''}${d.complexity_delta}` : 'N/A'}</td>
+                    <td className="py-2.5 px-4 text-center text-[#777D83] tabular-nums">{d.confidence_delta !== null ? `${d.confidence_delta > 0 ? '+' : ''}${d.confidence_delta}` : 'N/A'}</td>
+                    <td className="py-2.5 px-4 text-center text-[#777D83] tabular-nums">{d.readiness_delta !== null ? `${d.readiness_delta > 0 ? '+' : ''}${d.readiness_delta}` : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -259,37 +270,41 @@ function AppSelect({ label, apps, value, onChange }: {
   value: string;
   onChange: (v: string) => void;
 }) {
+  const isA = label === 'A';
   return (
     <div className="relative">
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-accent">{label}</span>
+      <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md font-bold text-[10px] text-white ${isA ? 'bg-blue-600' : 'bg-purple-600'}`}>
+        {label}
+      </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="inner-glass rounded-pill pl-6 pr-7 py-1.5 text-xs font-medium text-ink-muted appearance-none cursor-pointer hover:bg-white/35 transition-colors"
+        className="h-9 rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs font-semibold text-slate-800 appearance-none cursor-pointer hover:border-indigo-400 shadow-2xs transition-colors outline-none"
       >
         {apps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
-      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
     </div>
   );
 }
 
 function AppSummaryCard({ app, label }: { app: ComparisonAppSummary; label: string }) {
+  const isA = label === 'A';
   return (
-    <BentoCard className="p-5" dense>
+    <BentoCard className={`p-5 ${isA ? 'border-t-4 border-blue-500' : 'border-t-4 border-purple-500'} hover:shadow-sm transition-all`} dense>
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: label === 'A' ? '#0D7490' : '#7668AE' }}>{label}</span>
-            <h3 className="text-sm font-semibold text-ink">{app.application_name}</h3>
+            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white ${isA ? 'bg-blue-600' : 'bg-purple-600'}`}>{label}</span>
+            <h3 className="text-base font-bold text-slate-900">{app.application_name}</h3>
           </div>
-          {app.description && <p className="text-xs text-ink-muted mt-0.5">{app.description}</p>}
+          {app.description && <p className="text-xs text-slate-500 mt-1">{app.description}</p>}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <ScoreTile label="Complexity" score={app.complexity_score} classification={app.complexity_classification} color="#E88555" />
-        <ScoreTile label="Confidence" score={app.confidence_score} classification={app.confidence_classification} color="#4D8F86" />
-        <ScoreTile label="Readiness" score={app.readiness_score} classification={app.readiness_classification} color="#5B9E6A" />
+        <ScoreTile label="Complexity" score={app.complexity_score} classification={app.complexity_classification} color="#DC2626" />
+        <ScoreTile label="Confidence" score={app.confidence_score} classification={app.confidence_classification} color="#166534" />
+        <ScoreTile label="Readiness" score={app.readiness_score} classification={app.readiness_classification} color="#166534" />
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <StatRow label="Artifacts" value={app.artifact_count} />
@@ -299,8 +314,8 @@ function AppSummaryCard({ app, label }: { app: ComparisonAppSummary; label: stri
         <StatRow label="Findings" value={app.finding_count} />
         <StatRow label="Missing Evidence" value={app.missing_evidence_count} />
       </div>
-      {app.business_domain && <div className="mt-2 text-[11px] text-ink-soft">Domain: {app.business_domain}</div>}
-      {app.computed_at && <div className="text-[11px] text-ink-soft">Assessed: {new Date(app.computed_at).toLocaleDateString()}</div>}
+      {app.business_domain && <div className="mt-2 text-xs text-[#777D83]">Domain: {app.business_domain}</div>}
+      {app.computed_at && <div className="text-xs text-[#A0A4A8]">Assessed: {new Date(app.computed_at).toLocaleDateString()}</div>}
     </BentoCard>
   );
 }
@@ -312,19 +327,19 @@ function ScoreTile({ label, score, classification, color }: {
   color: string;
 }) {
   return (
-    <div className="text-center p-2 rounded-tile inner-glass">
-      <div className="text-[9px] text-ink-soft uppercase tracking-wide">{label}</div>
-      <div className="text-lg font-semibold text-ink mt-0.5">{score !== null ? score : 'N/A'}</div>
-      <div className="text-[9px] font-medium" style={{ color }}>{classification}</div>
+    <div className="text-center p-2.5 rounded-xl border border-[#E3E5E7] bg-[#FAFAFA]">
+      <div className="text-[10px] text-[#777D83] uppercase tracking-wide font-medium">{label}</div>
+      <div className="text-lg font-normal text-[#202124] mt-0.5 tabular-nums">{score !== null ? score : 'N/A'}</div>
+      <div className="text-[10px] font-medium" style={{ color }}>{classification}</div>
     </div>
   );
 }
 
 function StatRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-ink-soft">{label}</span>
-      <span className="text-ink font-medium">{value}</span>
+    <div className="flex items-center justify-between py-0.5">
+      <span className="text-[#777D83]">{label}</span>
+      <span className="text-[#202124] font-medium tabular-nums">{value}</span>
     </div>
   );
 }
@@ -332,18 +347,18 @@ function StatRow({ label, value }: { label: string; value: number }) {
 function DeltaTile({ label, value }: { label: string; value: number | null }) {
   if (value === null) {
     return (
-      <div className="text-center p-2 rounded-tile inner-glass">
-        <div className="text-[10px] text-ink-soft">{label}</div>
-        <div className="text-sm font-semibold text-ink-soft">N/A</div>
+      <div className="text-center p-3 rounded-xl border border-[#E3E5E7] bg-[#FAFAFA]">
+        <div className="text-xs text-[#777D83]">{label}</div>
+        <div className="text-sm font-medium text-[#A0A4A8] mt-1">N/A</div>
       </div>
     );
   }
   const isPositive = value > 0;
   const isNeutral = value === 0;
   return (
-    <div className="text-center p-2 rounded-tile inner-glass">
-      <div className="text-[10px] text-ink-soft">{label}</div>
-      <div className={`text-sm font-semibold ${isNeutral ? 'text-ink-muted' : isPositive ? 'text-severity-medium' : 'text-success'}`}>
+    <div className="text-center p-3 rounded-xl border border-[#E3E5E7] bg-[#FAFAFA]">
+      <div className="text-xs text-[#777D83]">{label}</div>
+      <div className={`text-base font-medium mt-0.5 tabular-nums ${isNeutral ? 'text-[#777D83]' : isPositive ? 'text-[#D97706]' : 'text-[#166534]'}`}>
         {isPositive ? '+' : ''}{value}
       </div>
     </div>

@@ -1,0 +1,2 @@
+import{_ as e,p as s,ad as o,q as i}from"./index-DancNvS7.js";import{p as g}from"./cynefin-EF2NZ3EQ--gh8Cajl.js";var p={parse:e(async r=>{const a=await g("info",r);s.debug(a)},"parse")},d={version:"12.3.0"},v=e(()=>d.version,"getVersion"),m={getVersion:v},c=e((r,a,n)=>{s.debug(`rendering info diagram
+`+r);const t=o(a);i(t,100,400,!0),t.append("g").append("text").attr("x",100).attr("y",40).attr("class","version").attr("font-size",32).style("text-anchor","middle").text(`v${n}`)},"draw"),f={draw:c},_={parser:p,db:m,renderer:f};export{_ as diagram};

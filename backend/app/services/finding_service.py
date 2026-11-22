@@ -265,7 +265,7 @@ def _build_unknown_findings(
 
     # Embedded SQL without DDL
     has_embedded_sql = any(c.component_type == "TABLE" and c.technology == "SQL" for c in components)
-    has_ddl = any(a.category == "SQL_DDL" for a in artifacts)
+    has_ddl = any(a.category in ("SQL_DDL", "SQL") for a in artifacts)
     if has_embedded_sql and not has_ddl:
         fid = _deterministic_finding_id(application_id, "missing_ddl")
         findings.append(Finding(

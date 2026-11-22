@@ -171,6 +171,7 @@ class CobolParser(BaseParser):
     def _extract_paragraphs(self, artifact_id: str, lines: list[PreprocessedLine],
                             result: ParseResult) -> None:
         # Paragraph: name in Area A followed by . (but not SECTION)
+        paras: list[NormalizedComponent] = []
         for line in lines:
             if line.is_comment or line.is_blank:
                 continue
@@ -182,7 +183,7 @@ class CobolParser(BaseParser):
                 if para_name in ("PROGRAM-ID", "AUTHOR", "INSTALLATION",
                                  "DATE-WRITTEN", "DATE-COMPILED", "SECURITY"):
                     continue
-                result.components.append(NormalizedComponent(
+                paras.append(NormalizedComponent(
                     name=para_name,
                     component_type="MODULE",
                     technology="COBOL",
@@ -199,6 +200,10 @@ class CobolParser(BaseParser):
                         snippet=line.text.strip(),
                     )],
                 ))
+        para_count = len(paras)
+        for p in paras:
+            p.detected_properties["paragraph_count"] = str(para_count)
+        result.components.extend(paras)
 
     def _extract_copies(self, artifact_id: str, lines: list[PreprocessedLine],
                         result: ParseResult) -> None:
@@ -230,6 +235,37 @@ class CobolParser(BaseParser):
                     )],
                 ))
 
+    def _find_literal_assignments_for_var(
+        self, var_name: str, before_line_no: int, lines: list[PreprocessedLine]
+    ) -> list[tuple[str, int, str]]:
+        """Find literal values assigned to a variable prior to a line.
+        Returns list of (literal_val, line_no, snippet). Ignores comments.
+        """
+        assignments = []
+        var_upper = var_name.upper()
+
+        for line in lines:
+            if line.line_no >= before_line_no:
+                break
+            if line.is_comment or line.is_blank:
+                continue
+
+            # Check MOVE 'LITERAL' TO VAR / MOVE "LITERAL" TO VAR
+            move_pattern = rf"\bMOVE\s+['\"]([A-Z0-9._-]+)['\"]\s+TO\s+([A-Z0-9_-]+)"
+            for m in re.finditer(move_pattern, line.text, re.IGNORECASE):
+                lit, target_var = m.group(1), m.group(2)
+                if target_var.upper() == var_upper:
+                    assignments.append((lit, line.line_no, line.text.strip()))
+
+            # Check 01/05 VAR ... VALUE 'LITERAL'
+            val_pattern = rf"\b[0-9]{{2}}\s+([A-Z0-9_-]+).*?\bVALUE\s+['\"]([A-Z0-9._-]+)['\"]"
+            for m in re.finditer(val_pattern, line.text, re.IGNORECASE):
+                target_var, lit = m.group(1), m.group(2)
+                if target_var.upper() == var_upper:
+                    assignments.append((lit, line.line_no, line.text.strip()))
+
+        return assignments
+
     def _extract_calls(self, artifact_id: str, lines: list[PreprocessedLine],
                        result: ParseResult) -> None:
         for line in lines:
@@ -256,35 +292,116 @@ class CobolParser(BaseParser):
                     )],
                 ))
             # Dynamic CALL: CALL WS-VAR or CALL variable-name (no quotes)
-            # Must be a COBOL CALL verb, not the word "CALL" inside a string literal
             for m in re.finditer(r"\bCALL\s+([A-Z][A-Z0-9-]*)", line.text, re.IGNORECASE):
-                target = m.group(1)
-                # Check if the char before target is a quote (already handled as static)
+                var_target = m.group(1)
                 preceding = line.text[m.start(1) - 1:m.start(1)] if m.start(1) > 0 else ""
                 if preceding in ('"', "'"):
-                    continue  # Already handled as static
-                # Skip if this CALL appears inside a string literal
+                    continue  # Handled as static
                 before = line.text[:m.start()]
                 quote_count = before.count("'") + before.count('"')
                 if quote_count % 2 == 1:
                     continue  # Inside a string literal
-                result.components.append(NormalizedComponent(
-                    name=target,
-                    component_type="PROGRAM",
-                    technology="COBOL",
-                    source_artifact_id=artifact_id,
-                    line_start=line.line_no,
-                    line_end=line.line_no,
-                    detected_properties={"call_type": "dynamic", "target_variable": target},
-                    evidence_class="Inferred",
-                    evidence_refs=[EvidenceRef(
+
+                # Search for preceding literal assignments to this variable (A5)
+                assignments = self._find_literal_assignments_for_var(var_target, line.line_no, lines)
+
+                if len(assignments) == 0:
+                    # Unresolved dynamic call: Target is classification Unknown, rule UNRESOLVED_TARGET
+                    result.components.append(NormalizedComponent(
+                        name=var_target,
+                        component_type="PROGRAM",
+                        technology="COBOL",
+                        source_artifact_id=artifact_id,
+                        line_start=line.line_no,
+                        line_end=line.line_no,
+                        detected_properties={
+                            "call_type": "dynamic_unresolved",
+                            "target_variable": var_target,
+                            "unresolved": "true",
+                        },
+                        evidence_class="Unknown",
+                        evidence_refs=[EvidenceRef(
+                            artifact_id=artifact_id,
+                            line_start=line.line_no,
+                            line_end=line.line_no,
+                            rule="UNRESOLVED_TARGET",
+                            snippet=line.text.strip(),
+                        )],
+                        warnings=[f"Unresolved dynamic CALL to variable {var_target} without literal assignment"],
+                    ))
+                elif len(assignments) == 1:
+                    # Resolved by single literal: classification Inferred, NEVER Evidence-based.
+                    # Evidence ref points to BOTH assignment line and CALL line.
+                    lit_val, assign_line, assign_snip = assignments[0]
+                    result.components.append(NormalizedComponent(
+                        name=lit_val,
+                        component_type="PROGRAM",
+                        technology="COBOL",
+                        source_artifact_id=artifact_id,
+                        line_start=line.line_no,
+                        line_end=line.line_no,
+                        detected_properties={
+                            "call_type": "dynamic_resolved",
+                            "target_variable": var_target,
+                            "resolved_target": lit_val,
+                            "assignment_line": str(assign_line),
+                        },
+                        evidence_class="Inferred",
+                        evidence_refs=[
+                            EvidenceRef(
+                                artifact_id=artifact_id,
+                                line_start=assign_line,
+                                line_end=assign_line,
+                                rule="COBOL_DYNAMIC_CALL_ASSIGN",
+                                snippet=assign_snip,
+                            ),
+                            EvidenceRef(
+                                artifact_id=artifact_id,
+                                line_start=line.line_no,
+                                line_end=line.line_no,
+                                rule="COBOL_CALL_DYNAMIC",
+                                snippet=line.text.strip(),
+                            ),
+                        ],
+                    ))
+                else:
+                    # Conflicting multiple MOVEs: keep all candidates, classification Inferred, flag ambiguity
+                    candidates = list(dict.fromkeys(a[0] for a in assignments))
+                    ev_refs = [
+                        EvidenceRef(
+                            artifact_id=artifact_id,
+                            line_start=a[1],
+                            line_end=a[1],
+                            rule="COBOL_DYNAMIC_CALL_ASSIGN",
+                            snippet=a[2],
+                        ) for a in assignments
+                    ]
+                    ev_refs.append(EvidenceRef(
                         artifact_id=artifact_id,
                         line_start=line.line_no,
                         line_end=line.line_no,
                         rule="COBOL_CALL_DYNAMIC",
                         snippet=line.text.strip(),
-                    )],
-                ))
+                    ))
+
+                    for lit_val in candidates:
+                        result.components.append(NormalizedComponent(
+                            name=lit_val,
+                            component_type="PROGRAM",
+                            technology="COBOL",
+                            source_artifact_id=artifact_id,
+                            line_start=line.line_no,
+                            line_end=line.line_no,
+                            detected_properties={
+                                "call_type": "dynamic_resolved",
+                                "target_variable": var_target,
+                                "ambiguous": "true",
+                                "candidate_targets": ",".join(candidates),
+                            },
+                            evidence_class="Inferred",
+                            evidence_refs=ev_refs,
+                            warnings=[f"Ambiguous dynamic CALL: multiple target candidates {candidates} for variable {var_target}"],
+                        ))
 
     def _extract_exec_sql(self, artifact_id: str, lines: list[PreprocessedLine],
                           result: ParseResult) -> None:
@@ -512,6 +629,7 @@ class CobolParser(BaseParser):
         has_comp = False
         has_comp3 = False
         occurs_count = ""
+        occurs_max = 0
         for line in lines:
             if line.is_comment or line.is_blank:
                 continue
@@ -520,7 +638,7 @@ class CobolParser(BaseParser):
                     self._emit_ws_component(artifact_id, current_01, current_01_line,
                                             line.line_no - 1, has_redefines, has_occurs,
                                             has_comp, has_comp3, occurs_count, result,
-                                            current_section)
+                                            current_section, occurs_max=occurs_max)
                 in_ws = True
                 in_file_section = False
                 current_01 = None
@@ -537,7 +655,7 @@ class CobolParser(BaseParser):
                     self._emit_ws_component(artifact_id, current_01, current_01_line,
                                             line.line_no - 1, has_redefines, has_occurs,
                                             has_comp, has_comp3, occurs_count, result,
-                                            current_section)
+                                            current_section, occurs_max=occurs_max)
                 in_ws = False
                 in_file_section = False
                 current_01 = None
@@ -551,7 +669,7 @@ class CobolParser(BaseParser):
                     self._emit_ws_component(artifact_id, current_01, current_01_line,
                                             line.line_no - 1, has_redefines, has_occurs,
                                             has_comp, has_comp3, occurs_count, result,
-                                            current_section)
+                                            current_section, occurs_max=occurs_max)
                 current_01 = m01.group(1)
                 current_01_line = line.line_no
                 has_redefines = False
@@ -559,12 +677,17 @@ class CobolParser(BaseParser):
                 has_comp = False
                 has_comp3 = False
                 occurs_count = ""
+                occurs_max = 0
             if re.search(r"\bREDEFINES\b", line.text, re.IGNORECASE):
                 has_redefines = True
             m_occ = re.search(r"\bOCCURS\s+(\d+)", line.text, re.IGNORECASE)
             if m_occ:
                 has_occurs = True
                 occurs_count = m_occ.group(1)
+                try:
+                    occurs_max = max(occurs_max, int(m_occ.group(1)))
+                except ValueError:
+                    pass
             if re.search(r"\bCOMP\b", line.text, re.IGNORECASE) or \
                re.search(r"\bCOMPUTATIONAL\b", line.text, re.IGNORECASE) or \
                re.search(r"\bBINARY\b", line.text, re.IGNORECASE):
@@ -579,17 +702,20 @@ class CobolParser(BaseParser):
             self._emit_ws_component(artifact_id, current_01, current_01_line,
                                     last_line, has_redefines, has_occurs,
                                     has_comp, has_comp3, occurs_count, result,
-                                    current_section)
+                                    current_section, occurs_max=occurs_max)
 
     def _emit_ws_component(self, artifact_id: str, name: str, start: int, end: int,
                            has_redefines: bool, has_occurs: bool, has_comp: bool,
                            has_comp3: bool, occurs_count: str,
-                           result: ParseResult, section: str = "WORKING-STORAGE") -> None:
+                           result: ParseResult, section: str = "WORKING-STORAGE",
+                           occurs_max: int = 0) -> None:
         props: dict[str, str] = {}
         if has_redefines:
             props["redefines"] = "yes"
         if has_occurs:
             props["occurs"] = occurs_count
+            if occurs_max > 0:
+                props["occurs_max"] = str(occurs_max)
         if has_comp:
             props["comp"] = "yes"
         if has_comp3:

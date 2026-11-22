@@ -1,0 +1,11 @@
+[tool.pyrefly]
+search-paths = ["backend"]
+
+[tool.pyright]
+include = ["backend"]
+extraPaths = ["backend"]
+pythonPath = "C:/Users/hp/AppData/Local/Programs/Python/Python314/python.exe"
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]

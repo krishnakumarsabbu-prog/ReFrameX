@@ -42,7 +42,7 @@ It does NOT convert, containerize, or migrate anything. It assesses readiness an
 │  └─────────┘  └─────────┘  └─────────┘                 │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐    │
-│  │  Ruleset (JSON, 40 rules, 8 domains, versioned) │    │
+│  │  Ruleset (JSON, 80 rules, 8 domains, versioned) │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐    │
@@ -66,9 +66,9 @@ It does NOT convert, containerize, or migrate anything. It assesses readiness an
        ↓
 6. Build Graph (adjacency, cycles, single points)
        ↓
-7. Evaluate Rules (40 rules × 8 domains × 3 measures)
+7. Evaluate Rules (80 rules × 8 domains × 3 measures)
        ↓
-8. Normalize & Aggregate (sigmoid for complexity, baseline 50 for confidence/readiness)
+8. Normalize & Aggregate (hyperbolic for complexity, baseline 0 for confidence/readiness)
        ↓
 9. Classify (Low/Medium/High or Not Ready/Partially/Ready)
        ↓
@@ -86,18 +86,18 @@ It does NOT convert, containerize, or migrate anything. It assesses readiness an
 Three independent measures, each 0-100:
 
 **Complexity** — How hard will the migration be?
-- 24 complexity rules detect patterns: GOTOs, ALTERs, dynamic calls, PERFORM nesting, embedded SQL, JCL complexity, CICS transactions, circular deps, assembler, unsupported tech
-- Sigmoid normalization: `100 * raw / (raw + 20)` — soft cap prevents any single rule from dominating
+- 34 complexity rules detect patterns: GOTOs, ALTERs, dynamic calls, PERFORM nesting, embedded SQL, JCL complexity, CICS transactions, circular deps, assembler, unsupported tech
+- Hyperbolic normalization: `100 * raw / (raw + 20)` ($K=20.0$) — soft cap prevents any single rule from dominating
 - Higher = more complex
 
 **Confidence** — How much can you trust this assessment?
-- 11 confidence rules: +points for parsed artifacts, -points for missing/unresolved/unsupported
-- Linear: `clamp(50 + raw, 0, 100)` — starts at neutral 50
+- 23 confidence rules: +points for parsed artifacts, -points for missing/unresolved/unsupported
+- Linear: `clamp(0.0 + raw, 0, 100)` — starts at baseline 0.0 (non-inflated) and capped by evidence coverage ratio (`coverage_ratio * 100`)
 - Higher = more trustworthy
 
 **Readiness** — Is the application ready for migration planning?
-- 13 readiness rules: +points for documented owner/domain/tech, available DDL/JCL/BMS, completed graph; -points for missing docs, unresolved deps, no security docs
-- Linear: `clamp(50 + raw, 0, 100)`
+- 23 readiness rules: +points for documented owner/domain/tech, available DDL/JCL/BMS, completed graph; -points for missing docs, unresolved deps, no security docs
+- Linear: `clamp(0.0 + raw, 0, 100)` — starts at baseline 0.0
 - Higher = more ready
 
 Key independence: adding a missing JCL artifact raises confidence (CF-JB-001: +3) but does NOT change complexity (JCL adds complexity via CX-JB rules, but the confidence evidence itself is separate). Adding GOTOs raises complexity but does not directly change confidence or readiness.
@@ -151,13 +151,13 @@ Then: a missing JCL artifact is added → confidence rises (CF-JB-001 fires) whi
 ## Likely Technical Judge Questions
 
 **Q: What about false positives?**
-A: All parsers use comment detection, string-aware parsing, and continuation-line merging. Parser accuracy is measured against 16 hand-verified ground-truth samples with 100% precision/recall. The confidence score explicitly signals when the assessment should not be fully trusted. Every finding is reviewable by a human.
+A: All parsers use comment detection, string-aware parsing, and continuation-line merging. Parser accuracy is measured against 16 synthetic benchmark samples with self-authored ground truth (99.36% precision & recall: 155 TP / 1 FP / 1 FN). The confidence score explicitly signals when the assessment should not be fully trusted. Every finding is reviewable by a human.
 
 **Q: Why not use an LLM for analysis?**
 A: Three reasons: (1) The no-outbound-calls rule prohibits sending source code to public AI services. (2) Deterministic scoring requires reproducibility — LLMs are non-deterministic. (3) Evidence traceability requires that every conclusion cites a specific rule, artifact, and line number. An optional AI assistant extension point exists but is disabled by default and classifies all output as Inferred, never changing scores without human confirmation.
 
 **Q: Who owns the ruleset?**
-A: The ruleset is a versioned JSON file (`default_ruleset_v1.json`) validated against a JSON schema. Domain experts edit it; the scoring engine loads it at runtime. No code changes needed to add or modify rules.
+A: The ruleset is a versioned JSON file (`default_ruleset_v2.json`) validated against a JSON schema. Domain experts edit it; the scoring engine loads it at runtime. No code changes needed to add or modify rules.
 
 **Q: How do you add a new language?**
 A: Create a parser class with the `@register_parser` decorator, add the extension mapping in the classifier, and write tests. See the Reuse Guide (doc 06).
@@ -169,4 +169,4 @@ A: Export from Endevor to a local directory or Git, then upload or use the folde
 A: Confidence measures how much you can trust the assessment (are artifacts complete? are dependencies resolved?). Readiness measures whether the application is documented and understood (is the owner known? is the tech stack documented? are DDL/JCL/BMS available?). An application can have high confidence (all artifacts present) but low readiness (no documented owner). They are computed by completely separate rule sets.
 
 **Q: How are the three measures kept independent?**
-A: Each measure has its own set of rules (24 complexity, 11 confidence, 13 readiness). Each measure has its own normalization formula (sigmoid for complexity, linear baseline-50 for confidence and readiness). Aggregation uses the same domain weights but only over domains with evidence for that specific measure. Tests prove that changing a complexity weight does not change confidence or readiness scores.
+A: Each measure has its own set of rules (34 complexity, 23 confidence, 23 readiness, 80 total). Each measure has its own normalization formula (hyperbolic for complexity, linear baseline-0 for confidence and readiness). Aggregation uses the same domain weights but only over domains with evidence for that specific measure. Tests prove that changing a complexity weight does not change confidence or readiness scores.

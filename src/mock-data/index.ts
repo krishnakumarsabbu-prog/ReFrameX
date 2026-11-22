@@ -12,6 +12,7 @@ import type {
 export const railItems: RailItem[] = [
   { id: 'dashboard', label: 'Executive Dashboard', path: '/', icon: 'LayoutDashboard' },
   { id: 'applications', label: 'Applications', path: '/applications', icon: 'Boxes', tabs: [{ id: 'all', label: 'All' }] },
+  { id: 'overview', label: 'Application Overview', path: '/applications/overview', icon: 'Layers' },
   { id: 'artifacts', label: 'Artifact Explorer', path: '/artifacts', icon: 'FileSearch', tabs: [{ id: 'all', label: 'Inventory' }] },
   { id: 'intelligence', label: 'Application Intelligence', path: '/intelligence', icon: 'Sparkles' },
   { id: 'dependencies', label: 'Dependency Intelligence', path: '/dependencies', icon: 'GitBranch' },
@@ -47,9 +48,9 @@ export const componentTrend: BarDatum[] = [
 ];
 
 export const readinessDistribution: ReadinessSlice[] = [
-  { label: 'Not Ready', value: 9, color: '#E04A3A' },
-  { label: 'Partially Ready', value: 11, color: '#E0A23A' },
-  { label: 'Ready for Planning', value: 4, color: '#3AAE6B' },
+  { label: 'Not Ready', value: 9, color: '#DC2626' },
+  { label: 'Partially Ready', value: 11, color: '#D97706' },
+  { label: 'Ready for Planning', value: 4, color: '#059669' },
 ];
 
 export const domains: DomainRing[] = [
@@ -92,6 +93,12 @@ export const moduleDescriptions: Record<string, { title: string; summary: string
     summary: 'Catalog of mainframe applications under assessment. Browse portfolios, view component inventories, and track assessment status per application.',
     phase: 'Phase 2',
     bullets: ['Application cards with component counts and status', 'Filter by portfolio, platform, and assessment state', 'Drill into component-level inventory per application'],
+  },
+  overview: {
+    title: 'Application Overview',
+    summary: 'Unified end-to-end modernization cockpit. Ingest directories and files, automatically trigger all assessments, inspect findings across all 8 domains, and download executive reports.',
+    phase: 'All-in-One Cockpit',
+    bullets: ['Automated upload & multi-stage analysis pipeline', 'All platform dimensions combined in collapsable accordions', '1-click Download Executive Report in HTML, PDF, and JSON'],
   },
   artifacts: {
     title: 'Artifact Explorer',

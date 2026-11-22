@@ -15,16 +15,28 @@ import {
   api, type Application, type Component, type AnalysisSummary,
   type ParserCoverageReport, type ParserCoverageEntry,
 } from '@/api/client';
+import { resolveActiveApp, setStoredActiveAppId } from '@/utils/activeApp';
 import type { EvidenceClass } from '@/types';
 
 const EVIDENCE_COLORS: Record<string, string> = {
-  'Evidence-based': '#4D8F86',
-  'Inferred': '#E8A838',
-  'Assumed': '#C99C6D',
-  'Unknown': '#A89B94',
+  'Evidence-based': '#10B981',
+  'Inferred': '#3B82F6',
+  'Assumed': '#F59E0B',
+  'Unknown': '#8B5CF6',
 };
 
-const TECH_COLORS = ['#4D8F86', '#E8A838', '#C99C6D', '#547C7B', '#A9784E', '#D9C1A2', '#E88555', '#8A8A93'];
+const TECH_COLORS = ['#3B82F6', '#6366F1', '#06B6D4', '#10B981', '#F59E0B', '#8B5CF6'];
+
+const softGlassTooltipStyle = {
+  backgroundColor: '#FFFFFF',
+  color: '#202124',
+  border: '1px solid #E3E5E7',
+  borderRadius: '12px',
+  boxShadow: '0 8px 24px rgba(25, 30, 35, 0.08)',
+  fontSize: '12px',
+  fontFamily: 'Inter, sans-serif',
+  padding: '8px 12px',
+} as const;
 
 const CAPABILITY_LABELS: Record<string, string> = {
   FULL_EXTRACT: 'Full Extract',
@@ -33,9 +45,9 @@ const CAPABILITY_LABELS: Record<string, string> = {
 };
 
 const CAPABILITY_BADGE: Record<string, string> = {
-  FULL_EXTRACT: 'bg-severity-low/15 text-severity-low',
-  PARTIAL_EXTRACT: 'bg-severity-medium/15 text-severity-medium',
-  DETECT_ONLY: 'bg-evidence-unknown/15 text-evidence-unknown',
+  FULL_EXTRACT: 'bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]',
+  PARTIAL_EXTRACT: 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]',
+  DETECT_ONLY: 'bg-[#F3F4F6] text-[#374151] border border-[#E5E7EB]',
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -96,7 +108,7 @@ export default function IntelligencePage() {
     try {
       const data = await api.listApplications();
       setApps(data);
-      const active = data.find((a) => a.is_active) ?? data[0] ?? null;
+      const active = resolveActiveApp(data);
       setActiveApp(active);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load applications');
@@ -126,6 +138,7 @@ export default function IntelligencePage() {
   useEffect(() => { if (activeApp) loadAnalysis(activeApp.id); }, [activeApp, loadAnalysis]);
 
   async function handleSelectApp(id: string) {
+    setStoredActiveAppId(id);
     try {
       await api.updateApplication(id, { is_active: true });
       await loadApps();
@@ -168,19 +181,19 @@ export default function IntelligencePage() {
   const evidenceChartData = evidenceClasses.map((e) => ({
     label: e,
     value: summary!.by_evidence_class[e],
-    color: EVIDENCE_COLORS[e] ?? '#A89B94',
+    color: EVIDENCE_COLORS[e] ?? '#94A3B8',
   }));
 
   if (apps.length === 0 && !loading) {
     return (
       <>
-        <PageHeader title="Application Intelligence" breadcrumb={['ReframeX', 'Application Intelligence']} />
+        <PageHeader title="Application Intelligence" breadcrumb={['ReFrameX', 'Application Intelligence']} />
         <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-5 text-accent">
+          <div className="w-16 h-16 rounded-2xl bg-[#F1F2F3] border border-[#E3E5E7] flex items-center justify-center mb-5 text-[#202124]">
             <Sparkles size={28} />
           </div>
-          <h2 className="text-xl font-semibold text-ink mb-2">No applications to analyze</h2>
-          <p className="text-ink-muted max-w-sm">
+          <h2 className="text-xl font-medium text-[#202124] mb-2">No applications to analyze</h2>
+          <p className="text-[#777D83] max-w-sm">
             Create an application and upload artifacts first, then run analysis to see extracted components here.
           </p>
         </BentoCard>
@@ -192,25 +205,25 @@ export default function IntelligencePage() {
     <>
       <PageHeader
         title="Application Intelligence"
-        breadcrumb={['ReframeX', 'Application Intelligence']}
+        breadcrumb={['ReFrameX', 'Application Intelligence']}
         action={
           <div className="flex items-center gap-2">
             <div className="relative">
               <select
                 value={activeApp?.id ?? ''}
                 onChange={(e) => handleSelectApp(e.target.value)}
-                className="inner-glass rounded-pill px-3 py-1.5 pr-8 text-xs font-medium text-ink-muted appearance-none cursor-pointer hover:bg-white/35 transition-colors"
+                className="h-9 rounded-xl border border-[#E3E5E7] bg-white px-3.5 py-1.5 pr-8 text-xs font-medium text-[#202124] shadow-sm appearance-none cursor-pointer hover:border-[#202124] transition-colors outline-none"
               >
                 {apps.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
-              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A0A4A8] pointer-events-none" />
             </div>
             <button
               onClick={handleAnalyze}
               disabled={analyzing || !activeApp}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-pill bg-accent text-white text-sm font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs font-semibold hover:from-indigo-700 hover:to-blue-700 disabled:opacity-50 transition-all shadow-sm shadow-indigo-600/20"
             >
               {analyzing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               {analyzing ? 'Analyzing...' : 'Run Analysis'}
@@ -220,16 +233,16 @@ export default function IntelligencePage() {
       />
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-tile bg-severity-high/10 text-severity-high text-sm">
-          <AlertCircle size={16} /> {error}
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626] text-xs font-medium">
+          <AlertCircle size={15} /> {error}
           <button onClick={() => setError(null)} className="ml-auto"><X size={14} /></button>
         </div>
       )}
 
       {/* Static extraction notice */}
-      <BentoCard className="p-3 mb-5" dense>
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
-          <Info size={14} className="text-accent shrink-0" />
+      <BentoCard className="p-4 mb-5" dense>
+        <div className="flex items-center gap-2 text-xs text-[#777D83]">
+          <Info size={14} className="text-[#202124] shrink-0" />
           <span>
             Extraction is <strong>static and regex/rule-based</strong> — not full semantic compilation.
             Every component is classified by evidence strength and traced to its source location.
@@ -238,22 +251,22 @@ export default function IntelligencePage() {
       </BentoCard>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-ink-muted">
-          <Loader2 size={24} className="animate-spin" />
+        <div className="flex items-center justify-center py-20 text-[#777D83]">
+          <Loader2 size={24} className="animate-spin text-[#202124]" />
         </div>
       ) : !summary || summary.components_extracted === 0 ? (
         <BentoCard className="p-12 flex flex-col items-center text-center max-w-xl mx-auto" dense>
-          <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-5 text-accent">
+          <div className="w-16 h-16 rounded-2xl bg-[#F1F2F3] border border-[#E3E5E7] flex items-center justify-center mb-5 text-[#202124]">
             <Sparkles size={28} />
           </div>
-          <h2 className="text-xl font-semibold text-ink mb-2">No analysis yet</h2>
-          <p className="text-ink-muted max-w-sm mb-6">
+          <h2 className="text-xl font-medium text-[#202124] mb-2">No analysis yet</h2>
+          <p className="text-[#777D83] max-w-sm mb-6 text-xs">
             Run analysis to extract components from uploaded artifacts. The engine will identify programs, calls, SQL statements, JCL steps, and more.
           </p>
           <button
             onClick={handleAnalyze}
             disabled={analyzing}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-pill bg-accent text-white text-sm font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#202124] text-white text-xs font-medium hover:bg-black disabled:opacity-50 transition-colors shadow-sm"
           >
             {analyzing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             Run Analysis
@@ -263,10 +276,10 @@ export default function IntelligencePage() {
         <div className="space-y-5">
           {/* Summary tiles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <SummaryTile label="Components Extracted" value={String(summary.components_extracted)} icon={<Boxes size={16} />} />
-            <SummaryTile label="Artifacts Processed" value={String(summary.artifacts_processed)} icon={<FileSearch size={16} />} />
-            <SummaryTile label="Warnings" value={String(summary.warnings_count)} icon={<AlertTriangle size={16} />} />
-            <SummaryTile label="Duration" value={summary.duration_ms != null ? `${(summary.duration_ms / 1000).toFixed(2)}s` : '—'} icon={<Zap size={16} />} />
+            <SummaryTile label="Components Extracted" value={String(summary.components_extracted)} icon={<Boxes size={16} />} color="blue" />
+            <SummaryTile label="Artifacts Processed" value={String(summary.artifacts_processed)} icon={<FileSearch size={16} />} color="teal" />
+            <SummaryTile label="Warnings" value={String(summary.warnings_count)} icon={<AlertTriangle size={16} />} color="amber" />
+            <SummaryTile label="Duration" value={summary.duration_ms != null ? `${(summary.duration_ms / 1000).toFixed(2)}s` : '—'} icon={<Zap size={16} />} color="purple" />
           </div>
 
           {/* Charts row */}
@@ -274,17 +287,17 @@ export default function IntelligencePage() {
             {/* Technology distribution bar chart */}
             <BentoCard className="lg:col-span-2 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-ink">Technology Distribution</h3>
+                <h3 className="text-base font-medium text-[#202124]">Technology Distribution</h3>
               </div>
               {techChartData.length > 0 ? (
                 <div style={{ width: '100%', height: 200 }}>
                   <ResponsiveContainer>
                     <BarChart data={techChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8A8A93' }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8A8A93' }} width={40} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#777D83' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#777D83' }} width={40} />
                       <Tooltip
-                        cursor={{ fill: 'rgba(255,255,255,0.2)' }}
-                        contentStyle={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #E2DED8', borderRadius: '12px', fontSize: '12px' }}
+                        cursor={{ fill: 'rgba(25,30,35,0.03)' }}
+                        contentStyle={softGlassTooltipStyle}
                       />
                       <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                         {techChartData.map((entry, i) => (
@@ -302,7 +315,7 @@ export default function IntelligencePage() {
             {/* Evidence classification pie */}
             <BentoCard className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-ink">Evidence Classification</h3>
+                <h3 className="text-base font-medium text-[#202124]">Evidence Classification</h3>
               </div>
               {evidenceChartData.length > 0 ? (
                 <div className="flex items-center gap-4">
@@ -314,7 +327,7 @@ export default function IntelligencePage() {
                             <Cell key={i} fill={slice.color} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #E2DED8', borderRadius: '12px', fontSize: '12px' }} />
+                        <Tooltip contentStyle={softGlassTooltipStyle} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -323,9 +336,9 @@ export default function IntelligencePage() {
                       <div key={slice.label} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ background: slice.color }} />
-                          <span className="text-xs text-ink-muted">{slice.label}</span>
+                          <span className="text-xs text-[#777D83]">{slice.label}</span>
                         </div>
-                        <span className="text-sm font-semibold text-ink">{slice.value}</span>
+                        <span className="text-sm font-medium text-[#202124] tabular-nums">{slice.value}</span>
                       </div>
                     ))}
                   </div>
@@ -340,7 +353,7 @@ export default function IntelligencePage() {
           <div>
             <button
               onClick={() => setShowCoverage(!showCoverage)}
-              className="flex items-center gap-2 text-sm font-semibold text-ink hover:text-accent transition-colors"
+              className="flex items-center gap-2 text-sm font-medium text-[#202124] hover:text-black transition-colors"
             >
               <ChevronDown size={16} className={`transition-transform ${showCoverage ? 'rotate-180' : ''}`} />
               Parser Coverage Report
@@ -357,20 +370,20 @@ export default function IntelligencePage() {
 
                 {/* Registered parsers */}
                 {coverage.parsers.length > 0 && (
-                  <BentoCard className="p-4" dense>
-                    <h4 className="text-xs font-semibold text-ink mb-3 uppercase tracking-wide">Registered Parsers</h4>
+                  <BentoCard className="p-5" dense>
+                    <h4 className="text-xs font-medium text-[#202124] mb-3 uppercase tracking-wide">Registered Parsers</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {coverage.parsers.map((p) => (
-                        <div key={p.name} className="flex items-center justify-between px-3 py-2 rounded-tile bg-white/30">
+                        <div key={p.name} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-[#E3E5E7] bg-[#FAFAFA]">
                           <div>
-                            <div className="text-sm font-medium text-ink">{p.name}</div>
-                            <div className="text-[10px] text-ink-soft">{p.supported_categories}</div>
+                            <div className="text-sm font-medium text-[#202124]">{p.name}</div>
+                            <div className="text-[10px] text-[#777D83]">{p.supported_categories}</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex px-2 py-0.5 rounded-pill text-[10px] font-medium ${CAPABILITY_BADGE[p.capability] ?? ''}`}>
+                            <span className={`inline-flex px-2 py-0.5 rounded-lg text-[10px] font-medium ${CAPABILITY_BADGE[p.capability] ?? ''}`}>
                               {CAPABILITY_LABELS[p.capability] ?? p.capability}
                             </span>
-                            <span className="text-[10px] text-ink-soft">v{p.version}</span>
+                            <span className="text-[10px] text-[#A0A4A8]">v{p.version}</span>
                           </div>
                         </div>
                       ))}
@@ -379,35 +392,35 @@ export default function IntelligencePage() {
                 )}
 
                 {/* Per-artifact coverage table */}
-                <BentoCard className="overflow-hidden" dense>
+                <BentoCard className="overflow-hidden p-0" dense>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b border-solid-border text-left text-xs text-ink-soft uppercase tracking-wide">
-                          <th className="px-4 py-3 font-medium">Filename</th>
-                          <th className="px-4 py-3 font-medium">Category</th>
-                          <th className="px-4 py-3 font-medium">Parser</th>
-                          <th className="px-4 py-3 font-medium">Capability</th>
-                          <th className="px-4 py-3 font-medium">Components</th>
-                          <th className="px-4 py-3 font-medium">Warnings</th>
-                          <th className="px-4 py-3 font-medium">Status</th>
+                        <tr className="border-b border-[#E3E5E7] bg-[#F1F2F3] text-left text-[11px] font-medium text-[#777D83] uppercase tracking-wide">
+                          <th className="px-4 py-3">Filename</th>
+                          <th className="px-4 py-3">Category</th>
+                          <th className="px-4 py-3">Parser</th>
+                          <th className="px-4 py-3">Capability</th>
+                          <th className="px-4 py-3">Components</th>
+                          <th className="px-4 py-3">Warnings</th>
+                          <th className="px-4 py-3">Status</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-[#E3E5E7]">
                         {coverage.entries.map((entry) => (
-                          <tr key={entry.artifact_id} className="border-b border-solid-border/50 hover:bg-white/40 transition-colors">
-                            <td className="px-4 py-3 font-medium text-ink truncate max-w-[200px]">{entry.filename}</td>
-                            <td className="px-4 py-3 text-ink-muted">{entry.category}</td>
-                            <td className="px-4 py-3 text-ink-muted text-xs">{entry.parser_name ?? '—'}</td>
+                          <tr key={entry.artifact_id} className="hover:bg-[#F1F2F3]/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-[#202124] truncate max-w-[200px]">{entry.filename}</td>
+                            <td className="px-4 py-3 text-[#777D83]">{entry.category}</td>
+                            <td className="px-4 py-3 text-[#777D83]">{entry.parser_name ?? '—'}</td>
                             <td className="px-4 py-3">
                               {entry.capability && (
-                                <span className={`inline-flex px-2 py-0.5 rounded-pill text-xs font-medium ${CAPABILITY_BADGE[entry.capability] ?? ''}`}>
+                                <span className={`inline-flex px-2 py-0.5 rounded-lg text-[10px] font-medium ${CAPABILITY_BADGE[entry.capability] ?? ''}`}>
                                   {CAPABILITY_LABELS[entry.capability] ?? entry.capability}
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-ink font-medium">{entry.components_extracted}</td>
-                            <td className="px-4 py-3 text-ink-muted">{entry.warnings}</td>
+                            <td className="px-4 py-3 text-[#202124] font-medium tabular-nums">{entry.components_extracted}</td>
+                            <td className="px-4 py-3 text-[#777D83] tabular-nums">{entry.warnings}</td>
                             <td className="px-4 py-3"><StatusBadge>{entry.parse_status}</StatusBadge></td>
                           </tr>
                         ))}
@@ -418,22 +431,22 @@ export default function IntelligencePage() {
 
                 {/* Unsupported artifacts */}
                 {coverage.unsupported_artifacts.length > 0 && (
-                  <BentoCard className="p-4" dense>
-                    <h4 className="text-xs font-semibold text-ink mb-3 uppercase tracking-wide flex items-center gap-2">
-                      <AlertTriangle size={14} className="text-severity-medium" />
+                  <BentoCard className="p-5" dense>
+                    <h4 className="text-xs font-medium text-[#202124] mb-3 uppercase tracking-wide flex items-center gap-2">
+                      <AlertTriangle size={14} className="text-[#D97706]" />
                       Unsupported / Detect-Only Artifacts
                     </h4>
                     <div className="space-y-2">
                       {coverage.unsupported_artifacts.map((entry) => (
-                        <div key={entry.artifact_id} className="flex items-center justify-between py-2 px-3 rounded-tile bg-white/20">
+                        <div key={entry.artifact_id} className="flex items-center justify-between py-2 px-3.5 rounded-xl border border-[#E3E5E7] bg-[#FAFAFA]">
                           <div className="flex items-center gap-2">
-                            <FileSearch size={14} className="text-ink-soft" />
-                            <span className="text-sm font-medium text-ink">{entry.filename}</span>
-                            <span className="text-[10px] text-ink-soft">{entry.category}</span>
+                            <FileSearch size={14} className="text-[#777D83]" />
+                            <span className="text-sm font-medium text-[#202124]">{entry.filename}</span>
+                            <span className="text-[10px] text-[#A0A4A8]">{entry.category}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {entry.parser_name && <span className="text-xs text-ink-muted">{entry.parser_name}</span>}
-                            <span className="text-[10px] text-ink-soft">{entry.parse_status}</span>
+                            {entry.parser_name && <span className="text-xs text-[#777D83]">{entry.parser_name}</span>}
+                            <span className="text-[10px] text-[#A0A4A8]">{entry.parse_status}</span>
                           </div>
                         </div>
                       ))}
@@ -446,22 +459,22 @@ export default function IntelligencePage() {
 
           {/* Component inventory */}
           <div>
-            <h3 className="text-sm font-semibold text-ink mb-3">Component Inventory</h3>
+            <h3 className="text-base font-medium text-[#202124] mb-3">Component Inventory</h3>
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <FilterSelect label="Type" value={filterType} onChange={setFilterType} options={types} />
               <FilterSelect label="Evidence" value={filterEvidence} onChange={setFilterEvidence} options={evidenceClasses} />
               <FilterSelect label="Technology" value={filterTech} onChange={setFilterTech} options={technologies} />
-              <span className="text-xs text-ink-soft ml-auto">{filtered.length} of {components.length}</span>
+              <span className="text-xs text-[#777D83] ml-auto">{filtered.length} of {components.length}</span>
             </div>
 
             {/* Component table */}
-            <BentoCard className="overflow-hidden" dense>
+            <BentoCard className="overflow-hidden p-0" dense>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-solid-border text-left text-xs text-ink-soft uppercase tracking-wide">
+                    <tr className="border-b border-[#E3E5E7] bg-[#F1F2F3] text-left text-[11px] font-medium text-[#777D83] uppercase tracking-wide">
                       <th className="px-4 py-3 font-medium">Name</th>
                       <th className="px-4 py-3 font-medium">Type</th>
                       <th className="px-4 py-3 font-medium">Technology</th>
@@ -471,32 +484,32 @@ export default function IntelligencePage() {
                       <th className="px-4 py-3 font-medium">Parser</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-[#E3E5E7]">
                     {filtered.slice(0, 200).map((comp) => (
                       <tr
                         key={comp.id}
                         onClick={() => setSelectedComponent(comp)}
-                        className="border-b border-solid-border/50 hover:bg-white/40 transition-colors cursor-pointer"
+                        className="hover:bg-[#F1F2F3]/50 transition-colors cursor-pointer"
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-ink-soft shrink-0">{TYPE_ICONS[comp.component_type] ?? <Boxes size={14} />}</span>
-                            <span className="font-medium text-ink truncate max-w-[200px]">{comp.name}</span>
+                            <span className="text-[#777D83] shrink-0">{TYPE_ICONS[comp.component_type] ?? <Boxes size={14} />}</span>
+                            <span className="font-medium text-[#202124] truncate max-w-[200px]">{comp.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-ink-muted text-xs">{comp.component_type}</td>
-                        <td className="px-4 py-3 text-ink-muted text-xs">{comp.technology}</td>
-                        <td className="px-4 py-3 text-ink-muted text-xs truncate max-w-[150px]">{comp.source_filename}</td>
-                        <td className="px-4 py-3 text-ink-muted text-xs">{comp.line_start}{comp.line_end !== comp.line_start ? `–${comp.line_end}` : ''}</td>
+                        <td className="px-4 py-3 text-[#777D83]">{comp.component_type}</td>
+                        <td className="px-4 py-3 text-[#777D83]">{comp.technology}</td>
+                        <td className="px-4 py-3 text-[#777D83] truncate max-w-[150px]">{comp.source_filename}</td>
+                        <td className="px-4 py-3 text-[#777D83]">{comp.line_start}{comp.line_end !== comp.line_start ? `–${comp.line_end}` : ''}</td>
                         <td className="px-4 py-3"><StatusBadge evidence={comp.evidence_class as EvidenceClass} /></td>
-                        <td className="px-4 py-3 text-ink-soft text-[10px]">{comp.parser_name}</td>
+                        <td className="px-4 py-3 text-[#A0A4A8] text-[10px]">{comp.parser_name}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               {filtered.length > 200 && (
-                <div className="px-4 py-3 text-xs text-ink-soft text-center border-t border-solid-border/50">
+                <div className="px-4 py-3 text-xs text-[#777D83] text-center border-t border-[#E3E5E7]">
                   Showing first 200 of {filtered.length} components — use filters to narrow results
                 </div>
               )}
@@ -515,15 +528,23 @@ export default function IntelligencePage() {
   );
 }
 
-function SummaryTile({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+function SummaryTile({ label, value, icon, color = 'blue' }: { label: string; value: string; icon: React.ReactNode; color?: string }) {
+  const colorMap: Record<string, { topBorder: string; iconColor: string }> = {
+    blue: { topBorder: 'border-t-4 border-blue-500', iconColor: 'text-blue-600' },
+    teal: { topBorder: 'border-t-4 border-teal-500', iconColor: 'text-teal-600' },
+    amber: { topBorder: 'border-t-4 border-amber-500', iconColor: 'text-amber-600' },
+    purple: { topBorder: 'border-t-4 border-purple-500', iconColor: 'text-purple-600' },
+  };
+  const theme = colorMap[color] || colorMap.blue;
+
   return (
-    <BentoCard className="p-4" dense>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-ink-soft">{icon}</span>
+    <div className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs ${theme.topBorder} hover:shadow-sm transition-all`}>
+      <div className="mb-2 flex items-center justify-between">
+        <span className={theme.iconColor}>{icon}</span>
       </div>
-      <div className="text-2xl font-semibold text-ink">{value}</div>
-      <div className="text-xs text-ink-soft mt-1">{label}</div>
-    </BentoCard>
+      <div className="font-mono text-2xl font-bold leading-none tabular-nums text-slate-900">{value}</div>
+      <div className="mt-2 text-xs font-medium text-slate-500">{label}</div>
+    </div>
   );
 }
 
@@ -533,19 +554,19 @@ function FilterSelect({ label, value, onChange, options }: { label: string; valu
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="inner-glass rounded-pill px-3 py-1.5 pr-8 text-xs font-medium text-ink-muted appearance-none cursor-pointer"
+        className="h-9 appearance-none rounded-xl border border-[#E3E5E7] bg-[#F1F2F3] pl-3 pr-8 text-xs font-medium text-[#777D83] outline-none hover:border-[#202124] focus:border-[#202124] transition-colors"
       >
         <option value="all">All {label.toLowerCase()}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
-      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
+      <ChevronDown size={11} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A0A4A8]" />
     </div>
   );
 }
 
 function EmptyChart() {
   return (
-    <div className="flex items-center justify-center h-48 text-ink-soft text-sm">
+    <div className="flex items-center justify-center h-48 text-[#A0A4A8] text-sm">
       No data available
     </div>
   );
@@ -554,24 +575,23 @@ function EmptyChart() {
 function ComponentDrawer({ component, onClose }: { component: Component; onClose: () => void }) {
   const propEntries = Object.entries(component.detected_properties);
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-[#202124]/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="dense-surface w-full max-w-xl h-full overflow-y-auto p-6"
+        className="w-full max-w-xl h-full overflow-y-auto p-6 bg-white border-l border-[#E3E5E7] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        style={{ borderRadius: 0 }}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#E3E5E7]">
           <div className="flex items-center gap-2">
-            {TYPE_ICONS[component.component_type] ?? <Boxes size={18} className="text-accent" />}
+            {TYPE_ICONS[component.component_type] ?? <Boxes size={18} className="text-[#202124]" />}
             <div>
-              <h2 className="text-lg font-semibold text-ink">{component.name}</h2>
-              <p className="text-xs text-ink-soft">{component.component_type} · {component.technology}</p>
+              <h2 className="text-base font-medium text-[#202124]">{component.name}</h2>
+              <p className="text-xs text-[#777D83]">{component.component_type} · {component.technology}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/40"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F1F2F3] text-[#777D83]"><X size={18} /></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+        <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
           <Detail label="Evidence Class" value={component.evidence_class} />
           <Detail label="Source File" value={component.source_filename} />
           <Detail label="Line Range" value={`${component.line_start}–${component.line_end}`} />
@@ -581,18 +601,18 @@ function ComponentDrawer({ component, onClose }: { component: Component; onClose
         {/* Evidence references */}
         {component.evidence_refs.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs font-semibold text-ink mb-2 uppercase tracking-wide flex items-center gap-2">
+            <h3 className="text-xs font-medium text-[#202124] mb-2 uppercase tracking-wide flex items-center gap-2">
               <ScrollText size={14} /> Evidence References
             </h3>
             <div className="space-y-2">
               {component.evidence_refs.map((ref, i) => (
-                <div key={i} className="px-3 py-2 rounded-tile bg-white/30 border border-solid-border/50">
+                <div key={i} className="px-3 py-2 rounded-xl bg-[#FAFAFA] border border-[#E3E5E7]">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-accent">{ref.rule}</span>
-                    <span className="text-[10px] text-ink-soft">Line {ref.line_start}{ref.line_end !== ref.line_start ? `–${ref.line_end}` : ''}</span>
+                    <span className="text-xs font-mono font-medium text-[#202124]">{ref.rule}</span>
+                    <span className="text-[10px] text-[#777D83]">Line {ref.line_start}{ref.line_end !== ref.line_start ? `–${ref.line_end}` : ''}</span>
                   </div>
                   {ref.snippet && (
-                    <pre className="text-[11px] font-mono text-ink-muted whitespace-pre-wrap break-all">{ref.snippet}</pre>
+                    <pre className="text-[11px] font-mono text-[#202124] whitespace-pre-wrap break-all">{ref.snippet}</pre>
                   )}
                 </div>
               ))}
@@ -603,12 +623,12 @@ function ComponentDrawer({ component, onClose }: { component: Component; onClose
         {/* Detected properties */}
         {propEntries.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs font-semibold text-ink mb-2 uppercase tracking-wide">Detected Properties</h3>
+            <h3 className="text-xs font-medium text-[#202124] mb-2 uppercase tracking-wide">Detected Properties</h3>
             <div className="space-y-1">
               {propEntries.map(([key, val]) => (
-                <div key={key} className="flex items-center justify-between py-1.5 px-3 rounded-tile bg-white/20">
-                  <span className="text-xs text-ink-soft">{key}</span>
-                  <span className="text-xs font-medium text-ink">{val}</span>
+                <div key={key} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#FAFAFA] border border-[#E3E5E7]">
+                  <span className="text-xs text-[#777D83]">{key}</span>
+                  <span className="text-xs font-medium text-[#202124]">{val}</span>
                 </div>
               ))}
             </div>
@@ -618,12 +638,12 @@ function ComponentDrawer({ component, onClose }: { component: Component; onClose
         {/* Warnings */}
         {component.warnings.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs font-semibold text-ink mb-2 uppercase tracking-wide flex items-center gap-2">
-              <AlertTriangle size={14} className="text-severity-medium" /> Warnings
+            <h3 className="text-xs font-medium text-[#D97706] mb-2 uppercase tracking-wide flex items-center gap-2">
+              <AlertTriangle size={14} className="text-[#D97706]" /> Warnings
             </h3>
             <div className="space-y-1">
               {component.warnings.map((w, i) => (
-                <div key={i} className="text-xs text-severity-medium py-1.5 px-3 rounded-tile bg-severity-medium/10">
+                <div key={i} className="text-xs text-[#92400E] py-1.5 px-3 rounded-lg bg-[#FFFBEB] border border-[#FDE68A]">
                   {w}
                 </div>
               ))}
@@ -632,9 +652,9 @@ function ComponentDrawer({ component, onClose }: { component: Component; onClose
         )}
 
         {/* Component ID */}
-        <div className="mt-6 pt-4 border-t border-solid-border/50">
-          <div className="text-[10px] text-ink-soft">Component ID (deterministic)</div>
-          <div className="text-xs font-mono text-ink-muted mt-1 break-all">{component.id}</div>
+        <div className="mt-6 pt-4 border-t border-[#E3E5E7]">
+          <div className="text-[10px] text-[#A0A4A8]">Component ID (deterministic)</div>
+          <div className="text-xs font-mono text-[#777D83] mt-1 break-all">{component.id}</div>
         </div>
       </div>
     </div>
@@ -643,9 +663,9 @@ function ComponentDrawer({ component, onClose }: { component: Component; onClose
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <span className="text-xs text-ink-soft block">{label}</span>
-      <span className="text-sm text-ink font-medium break-all">{value}</span>
+    <div className="rounded-xl border border-[#E3E5E7] p-2.5 bg-[#FAFAFA]">
+      <span className="text-[10px] text-[#777D83] block uppercase font-medium">{label}</span>
+      <span className="text-xs text-[#202124] font-medium break-all mt-0.5 block">{value}</span>
     </div>
   );
 }

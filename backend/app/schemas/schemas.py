@@ -311,6 +311,11 @@ class AssessmentOut(BaseModel):
     recommended_next_steps: list[str]
     evidence_refs: list[dict]
     duration_ms: int
+    domains_assessed: int = 8
+    coverage_ratio: float = 1.0
+    unassessed_domains: list[str] = []
+    rule_counts: dict[str, Any] = {}
+    version_comparison_warning: str | None = None
 
 
 class DomainBreakdownOut(BaseModel):

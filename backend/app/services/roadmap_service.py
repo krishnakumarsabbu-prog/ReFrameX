@@ -124,7 +124,7 @@ def build_roadmap(db: Session, application_id: str) -> dict:
 
     # 3. Data and integration analysis — missing DDL, embedded SQL, external deps
     has_embedded_sql = any(c.component_type == "TABLE" and c.technology == "SQL" for c in components)
-    has_ddl = any(a.category == "SQL_DDL" for a in artifacts)
+    has_ddl = any(a.category in ("SQL_DDL", "SQL") for a in artifacts)
     if has_embedded_sql and not has_ddl:
         groups["Data and integration analysis"].append({
             "group": "Data and integration analysis",

@@ -31,11 +31,19 @@ from app.models.models import (
     Finding,
     ReviewAction,
     AnalysisRun,
+    LLMEvaluation,
 )
-from app.assessment.scoring_engine import DOMAIN_LABELS, MODEL_VERSION
+from app.core.config import settings
+from app.assessment.scoring_engine import (
+    DOMAIN_LABELS,
+    MODEL_VERSION,
+    get_ruleset_info,
+    load_ruleset,
+)
 from app.services import assessment_service, finding_service
 from app.services.recommendation_service import build_recommendations
 from app.services.roadmap_service import build_roadmap
+from app.services.evidence_metrics_service import get_full_evidence_metrics
 
 
 def _parse_json(val: str | None, default: Any) -> Any:
@@ -116,9 +124,86 @@ def build_report(db: Session, application_id: str) -> dict | None:
         "versions": _build_versions(assessment, parser_versions, record),
         "reviewer_changes": _build_reviewer_changes(findings),
         "measured_metrics": _build_measured_metrics(artifacts, components, dependencies, findings, run, record),
+        "evidence_metrics": _build_evidence_metrics_section(db, application_id),
+        "ai_usage_statement": _build_ai_usage_statement(db, application_id),
+        "methodology": _build_methodology(),
     }
 
     return report
+
+
+DOMAIN_DESCRIPTIONS = {
+    "application_business_logic": "Procedural business rules embedded in programs: paragraphs, sections, PERFORM/GOTO control flow, COMP-3 arithmetic, hardcoded literals and dates.",
+    "data_structures": "Record layouts and field definitions from copybooks: REDEFINES overlays, OCCURS arrays, packed/binary field types, group hierarchy depth.",
+    "database_persistence": "Data access surfaces: embedded SQL, DB2 DDL, table/index definitions, cursor usage and DB2-specific coupling.",
+    "jobs_batch_orchestration": "Job control: JCL steps, procedure calls, ordering and restart semantics, scheduler coupling, dataset dependencies.",
+    "online_transactions_ui": "Transaction monitors and screen maps: CICS transactions, COMMAREA contracts, BMS maps, terminal-oriented presentation logic.",
+    "integration_external_dependencies": "Contract surfaces beyond the application boundary: COPY members, program CALL targets, dynamic calls, external systems and interface files.",
+    "security_controls": "Access and protection concerns: RACF-style security checks, credentials in source, dataset protection and authorization flows.",
+    "operational_nonfunctional": "Runtime and operations: configuration, abends/restart handling, resource utilisation, operational knob exposure.",
+}
+
+
+def _build_methodology() -> dict:
+    """Describe how the document was produced, straight from the loaded ruleset."""
+    try:
+        info = get_ruleset_info(load_ruleset())
+    except Exception:
+        info = {}
+
+    return {
+        "pipeline": [
+            {"step": "01", "title": "Ingest", "detail": "Artifacts are stored byte-for-byte with SHA-256 digests, detected encoding, category and support level. No content is transformed at this stage."},
+            {"step": "02", "title": "Preprocess", "detail": "Fixed-format records are rebuilt into logical lines, sequence/indicator columns are stripped, comments and blanks removed, continuation handled."},
+            {"step": "03", "title": "Parse", "detail": "Language-specific parsers emit normalized components, each carrying an evidence reference of artifact, line range, rule and snippet."},
+            {"step": "04", "title": "Identify", "detail": "Components are grouped into stable identities so the same paragraph or record keeps its identity across re-analysis runs."},
+            {"step": "05", "title": "Resolve dependencies", "detail": "COPY members, CALL targets, transactions and datasets are linked. Unresolved targets are recorded as Unknown rather than guessed."},
+            {"step": "06", "title": "Evaluate rules", "detail": "Every rule in the declared ruleset is evaluated against every applicable component or artifact. A rule either produces evidence or it does not; nothing is sampled."},
+            {"step": "07", "title": "Score", "detail": "Domain results are normalized (hyperbolic saturation for complexity, baseline plus accumulated points for confidence and readiness) and weighted into the three top-level measures."},
+            {"step": "08", "title": "Publish", "detail": "Scores, findings, evidence references and versions are persisted as an immutable assessment record. Reviewers append decisions; machine output is never overwritten."},
+        ],
+        "evidence_classes": [
+            {"name": "Evidence-based", "meaning": "Read directly from source at a specific file and line range.", "tone": "emerald"},
+            {"name": "Inferred", "meaning": "Derived by analysis across evidence, with the derivation rule named.", "tone": "blue"},
+            {"name": "Assumed", "meaning": "Taken as working assumption; requires confirmation before it drives a decision.", "tone": "amber"},
+            {"name": "Unknown", "meaning": "Referenced but not resolvable from supplied material. Recorded, never silently dropped.", "tone": "rose"},
+        ],
+        "measures": {
+            "complexity": {
+                "label": "Migration Complexity",
+                "question": "How much work is this change likely to require?",
+                "formula": "100 × raw / (raw + K), K = {k}".format(k=info.get("hyperbolic_k", 20.0)),
+                "detail": "Each firing of a complexity rule adds its weight to the domain raw score. The hyperbolic curve saturates, so the first few findings matter most and additional findings have diminishing effect. That prevents a single noisy file from dominating the score. Only domains that produced evidence are included, and the domain weights are renormalised over those domains.",
+            },
+            "confidence": {
+                "label": "Assessment Confidence",
+                "question": "How much of this application did we actually see?",
+                "formula": "min(Σ wᵢ·cᵢ + baseline, coverage × 100)",
+                "detail": "Confidence is a property of the evidence, not of the code. It accumulates positive rule points per domain, weighted by the ruleset domain weights, then is capped by the evidence coverage ratio so that an application with large blind spots cannot present high confidence.",
+            },
+            "readiness": {
+                "label": "Migration Readiness",
+                "question": "Is there enough trustworthy information to plan the migration?",
+                "formula": "clamp(baseline + Σ positive − Σ negative, 0, 100)",
+                "detail": "Readiness reflects whether prerequisites for detailed planning exist: required artifact categories present, parsers succeeding, dependencies resolved, and no blocking unknowns. It is deliberately independent of complexity — a simple application can be unready if evidence is missing.",
+            },
+        },
+        "thresholds": info.get("thresholds", {}),
+        "domain_weights": {DOMAIN_LABELS.get(d, d): w for d, w in (info.get("domain_weights") or {}).items()},
+        "domain_descriptions": {DOMAIN_LABELS.get(d, d): desc for d, desc in DOMAIN_DESCRIPTIONS.items()},
+        "rules": {
+            "total": info.get("rule_counts", {}).get("total", 0),
+            "by_measure": info.get("rule_counts", {}).get("by_measure", {}),
+            "by_domain": info.get("rule_counts", {}).get("by_domain", {}),
+        },
+        "ruleset": {
+            "id": info.get("ruleset_id", ""),
+            "version": info.get("version", ""),
+            "effective_date": info.get("effective_date", ""),
+            "owner": info.get("owner", ""),
+            "changelog": info.get("changelog", []),
+        },
+    }
 
 
 def _build_executive_summary(
@@ -192,6 +277,7 @@ def _build_artifact_inventory(artifacts: list) -> dict:
         "total_size_bytes": total_size,
         "artifacts": [
             {
+                "id": a.id,
                 "filename": a.original_filename,
                 "category": a.category,
                 "support_level": a.support_level,
@@ -516,4 +602,34 @@ def _build_measured_metrics(
         "findings_by_evidence_class": by_evidence,
         "items_needing_specialist_input": specialist_count,
         "note": "Metrics show only measurable facts. No estimated cost, hours saved, or percentage savings are reported.",
+    }
+
+
+def _build_evidence_metrics_section(db: Session, application_id: str) -> dict:
+    """Build Evidence Metrics section for report: Static results always; LLM if run; comparison if both exist."""
+    em = get_full_evidence_metrics(db, application_id)
+    return {
+        "metadata": em.get("metadata"),
+        "static": em.get("static"),
+        "llm": em.get("llm") if em.get("llm", {}).get("status") not in ("disabled", "not_run") else None,
+        "comparison": em.get("comparison"),
+        "notice": em.get("notice"),
+    }
+
+
+def _build_ai_usage_statement(db: Session, application_id: str) -> dict:
+    """Build AI-usage statement (used yes/no, host, model, items reviewed, items accepted by humans)."""
+    evals = db.query(LLMEvaluation).filter(LLMEvaluation.application_id == application_id).all()
+    used = len(evals) > 0
+    models = sorted(list({e.model_id for e in evals}))
+    accepted = sum(1 for e in evals if e.review_status == "accepted")
+    host = settings.llm_allowed_hosts[0] if settings.llm_allowed_hosts else "api.groq.com"
+
+    return {
+        "used": used,
+        "host": host if used else "N/A",
+        "model": models[0] if models else (settings.llm_model if settings.llm_enabled else "N/A"),
+        "items_reviewed": len(evals),
+        "items_accepted_by_humans": accepted,
+        "statement": "AI evaluation was actively utilized as an advisory second opinion with human review." if used else "Zero external AI calls were made; this assessment is 100% deterministic rules-based.",
     }

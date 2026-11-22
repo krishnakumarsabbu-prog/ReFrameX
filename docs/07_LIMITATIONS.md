@@ -19,10 +19,10 @@
 2. COBOL programs follow standard ANSI COBOL formatting (columns 1-6 sequence, column 7 indicator, columns 8-72 code). Non-standard formats may not parse correctly.
 3. JCL follows standard IBM JCL syntax. Non-standard job control statements may not be recognized.
 4. SQL/DDL follows standard SQL syntax. Vendor-specific extensions may not be fully parsed.
-5. Component IDs are deterministic (SHA-256 of app_id|artifact_id|type|name|line_start|line_end), so reanalysis of unchanged artifacts produces identical IDs.
+5. Component IDs are deterministic (`sha256(app_id | type | NAME | relative_path | ordinal)[:16]`), deliberately excluding line numbers so non-semantic line shifts do not churn component IDs.
 6. The default ruleset weights are expert-set, not empirically calibrated against real migration outcomes.
 7. The complexity normalization constant K=20 is a heuristic that gives a reasonable distribution for typical mainframe applications.
-8. Dependency graph cycle detection is bounded at depth 10 to prevent infinite loops in large graphs.
+8. Dependency graph cycle detection uses Tarjan's Strongly Connected Components (SCC) algorithm, providing linear-time $O(V+E)$ exact cycle detection without arbitrary depth bounds.
 
 ## Evidence Gaps
 
@@ -30,7 +30,7 @@
 2. **No detected_properties verification**: Properties like `call_type`, `comp3`, `has_88_levels` are not verified by the accuracy harness.
 3. **No dependency extraction accuracy**: There is no ground truth for relationships (CALL→target, COPY→file). Dependency extraction accuracy is not measured.
 4. **No evidence_class accuracy**: The harness does not verify Evidence-based vs Inferred vs Unknown classifications.
-5. **Ground truth scope**: 16 samples cover 6 artifact types. HLASM, IMS, scheduler, security, and metadata parsers have no ground truth.
+5. **Ground truth scope**: 16 self-authored synthetic benchmark samples with self-authored ground truth cover 6 artifact types (99.36% precision & recall: 155 TP / 1 FP / 1 FN). HLASM, IMS, scheduler, security, and metadata parsers have no ground truth.
 
 ## Required Human Review
 

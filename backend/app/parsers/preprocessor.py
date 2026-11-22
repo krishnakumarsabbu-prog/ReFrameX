@@ -257,14 +257,24 @@ def _preprocess_sql(raw_lines: list[str]) -> list[PreprocessedLine]:
 
 
 def _preprocess_asm(raw_lines: list[str]) -> list[PreprocessedLine]:
-    """HLASM preprocessing: * in col 1 = comment."""
+    """HLASM preprocessing: * or .* in col 1 = comment, col 72 non-blank = continuation."""
     result: list[PreprocessedLine] = []
+    prev_continued = False
     for i, raw in enumerate(raw_lines, 1):
         stripped = raw.strip()
-        is_comment = len(raw) > 0 and raw[0] == "*"
+        is_comment = len(raw) > 0 and (raw[0] in ("*", "/") or raw.startswith(".*"))
+        has_continuation_char = (not is_comment and len(raw) >= 72 and raw[71] not in (" ", "\t"))
+        is_cont = prev_continued
+        prev_continued = has_continuation_char
+
+        clean_text = raw[:71].rstrip() if has_continuation_char else raw.rstrip()
+
         result.append(PreprocessedLine(
-            line_no=i, text=raw.rstrip(), is_comment=is_comment,
+            line_no=i,
+            text=clean_text,
+            is_comment=is_comment,
             is_blank=(stripped == "" and not is_comment),
-            is_continuation=False, area="",
+            is_continuation=is_cont,
+            area="CONT" if is_cont else "",
         ))
     return result

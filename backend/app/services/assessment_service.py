@@ -65,6 +65,8 @@ def run_assessment(
         is_current=True,
     )
     db.add(record)
+    from app.models.models import Application
+    db.query(Application).filter(Application.id == application_id).update({"assessment_status": "Complete"})
     db.commit()
 
     return serialized
@@ -192,3 +194,9 @@ def run_what_if(
 def get_component_assessment(db: Session, component_id: str) -> dict | None:
     """Get complexity assessment for a single component."""
     return compute_component_assessment(db, component_id)
+
+
+def get_rule_audit(db: Session, application_id: str) -> dict | None:
+    """Generate explainability rule audit for an application."""
+    from app.assessment.scoring_engine import generate_rule_audit
+    return generate_rule_audit(db, application_id)

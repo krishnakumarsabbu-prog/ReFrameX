@@ -82,3 +82,15 @@ def get_component_assessment(component_id: str, db: Session = Depends(get_db)):
     if result is None:
         raise HTTPException(status_code=404, detail="Component not found")
     return result
+
+
+@router.get("/api/applications/{app_id}/rules/audit")
+def get_rule_audit(app_id: str, db: Session = Depends(get_db)):
+    """Explainability audit trace for every rule: why it fired or did not fire."""
+    app = application_service.get_application(db, app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    audit = assessment_service.get_rule_audit(db, app_id)
+    if audit is None:
+        raise HTTPException(status_code=404, detail="Rule audit failed for application")
+    return audit

@@ -52,9 +52,8 @@ def analyze_application(db: Session, application_id: str) -> AnalysisRun:
     db.add(run)
     db.flush()
 
-    # Delete existing components for this application
-    db.query(Component).filter(Component.application_id == application_id).delete()
-    db.flush()
+    # Track seen component IDs for this run so orphaned components can be removed cleanly
+    seen_component_ids: set[str] = set()
 
     # Get all artifacts
     artifacts = db.query(Artifact).filter(Artifact.application_id == application_id).all()
@@ -78,6 +77,15 @@ def analyze_application(db: Session, application_id: str) -> AnalysisRun:
         if file_path.exists():
             content = file_path.read_bytes()
 
+        is_ebcdic = "EBCDIC" in (artifact.detected_encoding or "")
+        if is_ebcdic:
+            # Keep raw bytes untouched on disk, but parse the decoded view (A9)
+            try:
+                decoded_str = content.decode("cp037", errors="replace")
+                content = decoded_str.encode("utf-8")
+            except Exception:
+                pass
+
         # Parse
         parse_result = parser.parse(artifact.id, artifact.original_filename, content, artifact.category)
 
@@ -86,33 +94,81 @@ def analyze_application(db: Session, application_id: str) -> AnalysisRun:
 
         artifacts_processed += 1
 
-        # Store components
+        rel_path = (artifact.relative_path or artifact.original_filename).strip().lower()
+        ordinal_counts: dict[tuple[str, str, str], int] = {}
+
+        # Store or upsert components (A6)
         for comp in parse_result.components:
-            comp_id = comp.deterministic_id(application_id)
-            db_comp = Component(
-                id=comp_id,
-                application_id=application_id,
-                name=comp.name,
-                component_type=comp.component_type,
-                technology=comp.technology,
-                source_artifact_id=artifact.id,
-                source_filename=artifact.original_filename,
-                line_start=comp.line_start,
-                line_end=comp.line_end,
-                detected_properties=json.dumps(comp.detected_properties),
-                evidence_class=comp.evidence_class,
-                evidence_refs=json.dumps(_serialize_refs(comp.evidence_refs)),
-                warnings=json.dumps(comp.warnings),
-                parser_name=parse_result.parser_name,
-                parser_version=parse_result.parser_version,
+            norm_name = comp.name.strip().upper()
+            ord_key = (rel_path, comp.component_type, norm_name)
+            ordinal_counts[ord_key] = ordinal_counts.get(ord_key, 0) + 1
+            ord_val = ordinal_counts[ord_key]
+
+            comp_id = comp.deterministic_id(
+                application_id,
+                artifact_relative_path=rel_path,
+                ordinal=ord_val,
             )
-            db.add(db_comp)
+            seen_component_ids.add(comp_id)
+
+            # If EBCDIC, mark as Inferred with a note (A9)
+            ev_class = "Inferred" if is_ebcdic else comp.evidence_class
+            comp_warnings = list(comp.warnings)
+            if is_ebcdic:
+                comp_warnings.append("Extracted from EBCDIC (cp037) encoded artifact")
+
+            existing_comp = db.query(Component).filter(
+                Component.id == comp_id,
+                Component.application_id == application_id,
+            ).first()
+
+            if existing_comp:
+                # Update attributes on reanalysis without creating duplicates (A6)
+                existing_comp.line_start = comp.line_start
+                existing_comp.line_end = comp.line_end
+                existing_comp.source_artifact_id = artifact.id
+                existing_comp.source_filename = artifact.original_filename
+                existing_comp.technology = comp.technology
+                existing_comp.detected_properties = json.dumps(comp.detected_properties)
+                existing_comp.evidence_class = ev_class
+                existing_comp.evidence_refs = json.dumps(_serialize_refs(comp.evidence_refs))
+                existing_comp.warnings = json.dumps(comp_warnings)
+                existing_comp.parser_name = parse_result.parser_name
+                existing_comp.parser_version = parse_result.parser_version
+            else:
+                db_comp = Component(
+                    id=comp_id,
+                    application_id=application_id,
+                    name=comp.name,
+                    component_type=comp.component_type,
+                    technology=comp.technology,
+                    source_artifact_id=artifact.id,
+                    source_filename=artifact.original_filename,
+                    line_start=comp.line_start,
+                    line_end=comp.line_end,
+                    detected_properties=json.dumps(comp.detected_properties),
+                    evidence_class=ev_class,
+                    evidence_refs=json.dumps(_serialize_refs(comp.evidence_refs)),
+                    warnings=json.dumps(comp_warnings),
+                    parser_name=parse_result.parser_name,
+                    parser_version=parse_result.parser_version,
+                )
+                db.add(db_comp)
+
             total_components += 1
 
         total_warnings += len(parse_result.warnings)
 
         # Update artifact parse status
         artifact.parse_status = parse_result.parse_status
+
+    # Prune orphaned components that no longer exist in any artifact
+    if seen_component_ids:
+        db.query(Component).filter(
+            Component.application_id == application_id,
+            Component.id.notin_(seen_component_ids),
+        ).delete(synchronize_session=False)
+    db.flush()
 
     # Build summary
     elapsed_ms = int((time.perf_counter() - start_time) * 1000)
@@ -259,3 +315,9 @@ def get_parser_coverage(db: Session, application_id: str) -> dict:
         "entries": entries,
         "unsupported_artifacts": unsupported,
     }
+
+
+def migrate_component_ids_for_application(db: Session, application_id: str) -> int:
+    """Migrate legacy component rows to the stable deterministic ID format (A6)."""
+    return analyze_application(db, application_id).artifacts_processed
+

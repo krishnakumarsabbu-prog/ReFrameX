@@ -83,31 +83,51 @@ _SIGNATURES: list[tuple[str, str, str]] = [
 ]
 
 
+EBCDIC_KEYWORDS = [
+    "identification division",
+    "//job",
+    "dfhmsd",
+    "define cluster",
+    "create table",
+]
+
+
 def _detect_encoding(data: bytes) -> str:
-    """Return 'UTF-8', 'ASCII', 'likely EBCDIC cp037', or 'binary'."""
-    if b"\x00" in data:
-        return "binary"
-    # Try UTF-8 first
+    """Detect encoding with heuristic classification.
+    Returns:
+      'ASCII (heuristic)'
+      'UTF-8 (heuristic)'
+      'EBCDIC (heuristic, cp037)'
+      'binary/unknown encoding (heuristic)'
+    """
+    if not data:
+        return "ASCII (heuristic)"
+
+    # 1. Try pure ASCII / UTF-8
     try:
         data.decode("utf-8")
-        # If pure ASCII, label as ASCII
         try:
             data.decode("ascii")
-            return "ASCII"
+            return "ASCII (heuristic)"
         except UnicodeDecodeError:
-            return "UTF-8"
+            return "UTF-8 (heuristic)"
     except UnicodeDecodeError:
         pass
-    # Try EBCDIC cp037
+
+    # 2. Try EBCDIC cp037 decoding
     try:
-        decoded = data.decode("cp037")
-        printable = sum(1 for c in decoded if c.isprintable() or c in "\n\r\t ")
-        ratio = printable / max(len(decoded), 1)
-        if ratio > 0.80:
-            return "likely EBCDIC cp037"
+        decoded_cp037 = data.decode("cp037")
+        printable = sum(1 for c in decoded_cp037 if c.isprintable() or c in "\n\r\t ")
+        ratio = printable / max(len(decoded_cp037), 1)
+        lower_cp037 = decoded_cp037.lower()
+        has_ebcdic_kw = any(kw in lower_cp037 for kw in EBCDIC_KEYWORDS)
+
+        if ratio >= 0.70 and has_ebcdic_kw:
+            return "EBCDIC (heuristic, cp037)"
     except (UnicodeDecodeError, LookupError):
         pass
-    return "binary"
+
+    return "binary/unknown encoding (heuristic)"
 
 
 def _sniff_content(data: bytes) -> tuple[str, str] | None:
@@ -132,6 +152,9 @@ def classify(filename: str, data: bytes) -> Classification:
     if ext in EXTENSION_MAP:
         cat, sup = EXTENSION_MAP[ext]
         reason = f"extension '{ext}'"
+        if encoding == "binary/unknown encoding (heuristic)":
+            sup = "DETECT_ONLY"
+            reason += " (binary/unknown encoding, set to DETECT_ONLY)"
         return Classification(
             category=cat,
             support_level=sup,
@@ -145,9 +168,11 @@ def classify(filename: str, data: bytes) -> Classification:
     if sniffed:
         cat, sup = sniffed
         reason = f"content signature matched (extension was '{ext or '<none>'}')"
+        if encoding == "binary/unknown encoding (heuristic)":
+            sup = "DETECT_ONLY"
     else:
         cat = "UNKNOWN"
-        sup = "UNSUPPORTED"
+        sup = "DETECT_ONLY" if encoding == "binary/unknown encoding (heuristic)" else "UNSUPPORTED"
         reason = f"unrecognized content (extension was '{ext or '<none>'}')"
 
     return Classification(

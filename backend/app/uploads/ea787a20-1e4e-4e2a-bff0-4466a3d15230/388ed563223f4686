@@ -1,0 +1,21 @@
+//DAILYCLM JOB (ACCT,CLM),'DAILY CLAIMS BATCH',
+//             CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
+//*-------------------------------------------------------------------*
+//* BATCH ORCHESTRATION: CLAIMS RECONCILIATION & REPORTING            *
+//*-------------------------------------------------------------------*
+//STEP010  EXEC PGM=SORT
+//SORTIN   DD  DSN=PROD.CLAIMS.RAW,DISP=SHR
+//SORTOUT  DD  DSN=&&SORTED,DISP=(NEW,PASS),UNIT=SYSDA,
+//             SPACE=(CYL,(25,10),RLSE)
+//SYSOUT   DD  SYSOUT=*
+//SYSIN    DD  *
+  SORT FIELDS=(1,10,CH,A)
+/*
+//STEP020  EXEC PGM=CLAIMCTL,COND=(0,NE)
+//STEPLIB  DD  DSN=PROD.CLAIMS.LOADLIB,DISP=SHR
+//CLMFILE  DD  DSN=&&SORTED,DISP=(OLD,DELETE)
+//REPORT   DD  DSN=PROD.CLAIMS.RECON(+1),DISP=(NEW,CATLG),
+//             UNIT=SYSDA,SPACE=(CYL,(5,2))
+//SYSOUT   DD  SYSOUT=*
+//SYSPRINT DD  SYSOUT=*
+//

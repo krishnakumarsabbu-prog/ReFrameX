@@ -114,7 +114,7 @@ def _make_dependency(db, app_id="test-app-1", **kwargs) -> Dependency:
 class TestRulesetValidation:
     def test_ruleset_loads_successfully(self):
         rs = load_ruleset()
-        assert rs["ruleset_id"] == "default_ruleset_v1"
+        assert rs["ruleset_id"] in ("default_ruleset_v1", "default_ruleset_v2")
         assert len(rs["rules"]) > 0
 
     def test_all_8_domains_present(self):
@@ -463,6 +463,7 @@ class TestScenarios:
         _make_artifact(db)
         _make_artifact(db, id="art-jcl", category="JCL", original_filename="JOB.jcl", parse_status="parsed")
         _make_artifact(db, id="art-ddl", category="SQL_DDL", original_filename="DB.sql", parse_status="parsed")
+        _make_artifact(db, id="art-bms", category="BMS_MAP", original_filename="SCREEN.bms", parse_status="parsed")
         for i in range(10):
             _make_component(db, id=f"goto-{i}", name=f"GOTO-{i}", component_type="CONTROL_FLOW",
                            detected_properties='{"legacy_indicator":"GOTO"}',
@@ -536,3 +537,111 @@ class TestVersioning:
         assert result.model_version == MODEL_VERSION
         assert result.ruleset_id == rs["ruleset_id"]
         assert result.ruleset_version == rs["version"]
+
+
+# ---- Tests: Audit Fixes & Verification ----
+
+class TestAuditCorrections:
+    def test_category_normalization_real_ingest_categories(self, db):
+        """Verify that pipeline categories 'SQL', 'BMS', 'HLASM' fire readiness and complexity rules."""
+        _make_app(db, owner="Test Team", business_domain="Insurance", technology_stack="COBOL/CICS/DB2")
+        _make_artifact(db, id="art-cobol", category="COBOL", original_filename="PROG.cbl", parse_status="parsed")
+        _make_artifact(db, id="art-sql", category="SQL", original_filename="SCHEMA.sql", parse_status="parsed")
+        _make_artifact(db, id="art-bms", category="BMS", original_filename="MAP.bms", parse_status="parsed")
+        _make_artifact(db, id="art-asm", category="HLASM", original_filename="ROUTINE.asm", parse_status="parsed")
+        _make_component(db, id="comp-cbl", name="MAINPROG", component_type="PROGRAM", technology="COBOL", source_artifact_id="art-cobol")
+        _make_component(db, id="comp-tbl", name="POLICY_TBL", component_type="TABLE", technology="SQL", source_artifact_id="art-sql")
+
+        rs = load_ruleset()
+        result = compute_assessment(db, "test-app-1", ruleset=rs)
+
+        # Database readiness
+        db_ready = result.domain_results["database_persistence"]["readiness"]
+        db_fired = [r.rule_id for r in db_ready.fired_rules]
+        assert "RD-DB-001" in db_fired, f"RD-DB-001 should fire for category='SQL', got {db_fired}"
+        assert "RD-DB-003" in db_fired, f"RD-DB-003 should fire when SQL + COBOL exist, got {db_fired}"
+        assert "RD-DB-002" not in db_fired, "RD-DB-002 (missing DDL penalty) should NOT fire when SQL DDL exists"
+
+        # Online UI readiness
+        ol_ready = result.domain_results["online_transactions_ui"]["readiness"]
+        ol_fired = [r.rule_id for r in ol_ready.fired_rules]
+        assert "RD-OL-001" in ol_fired, f"RD-OL-001 should fire for category='BMS', got {ol_fired}"
+        assert "RD-OL-002" in ol_fired, f"RD-OL-002 should fire when BMS + COBOL exist, got {ol_fired}"
+
+        # Complexity diagnostic rules
+        db_cx = result.domain_results["database_persistence"]["complexity"]
+        assert any(r.rule_id == "CX-DB-002" for r in db_cx.fired_rules), "CX-DB-002 should fire for SQL artifact"
+        ol_cx = result.domain_results["online_transactions_ui"]["complexity"]
+        assert any(r.rule_id == "CX-OL-002" for r in ol_cx.fired_rules), "CX-OL-002 should fire for BMS artifact"
+        on_cx = result.domain_results["operational_nonfunctional"]["complexity"]
+        assert any(r.rule_id == "CX-ON-002" for r in on_cx.fired_rules), "CX-ON-002 should fire for HLASM artifact"
+
+    def test_confidence_saturation_prevention(self, db):
+        """Verify that 50 duplicate Evidence-based components do not inflate domain score to 3,000."""
+        _make_app(db)
+        _make_artifact(db, id="art-1", category="COBOL", parse_status="parsed", support_level="SUPPORTED_PARSE")
+        # Add 50 evidence-based components
+        for i in range(50):
+            _make_component(db, id=f"comp-{i}", name=f"PROG-{i}", component_type="PROGRAM",
+                           evidence_class="Evidence-based", source_artifact_id="art-1")
+
+        rs = load_ruleset()
+        result = compute_assessment(db, "test-app-1", ruleset=rs)
+        ab_conf = result.domain_results["application_business_logic"]["confidence"]
+
+        # Raw score should be 100.0 (60 from CF-AB-001 + 40 from CF-AB-003), NOT 50 * 60 + 40 = 3040
+        assert ab_conf.raw_score == 100.0, f"Expected raw score 100.0, got {ab_conf.raw_score}"
+        assert ab_conf.normalized_score == 100.0
+
+    def test_inferred_penalty_visible_in_confidence(self, db):
+        """Verify that an Inferred component visibly docks confidence and is not masked by saturation."""
+        _make_app(db)
+        _make_artifact(db, id="art-1", category="COBOL", parse_status="parsed", support_level="SUPPORTED_PARSE")
+        # 10 Evidence-based and 1 Inferred
+        for i in range(10):
+            _make_component(db, id=f"comp-{i}", name=f"PROG-{i}", component_type="PROGRAM",
+                           evidence_class="Evidence-based", source_artifact_id="art-1")
+        _make_component(db, id="comp-inferred", name="DYNPROG", component_type="PROGRAM",
+                       evidence_class="Inferred", source_artifact_id="art-1")
+
+        rs = load_ruleset()
+        result = compute_assessment(db, "test-app-1", ruleset=rs)
+        ab_conf = result.domain_results["application_business_logic"]["confidence"]
+
+        # 60 (CF-AB-001) + 40 (CF-AB-003) - 15 (CF-AB-002) = 85.0
+        assert ab_conf.raw_score == 85.0, f"Expected raw score 85.0 with penalty, got {ab_conf.raw_score}"
+        assert ab_conf.normalized_score == 85.0
+
+    def test_unified_recommendation_and_component_complexity(self, db):
+        """Verify that recommendation_service component complexity matches compute_component_assessment."""
+        from app.services.recommendation_service import build_recommendations
+        _make_app(db)
+        _make_artifact(db)
+        _make_component(db, id="comp-goto", name="GOTO-PROG", component_type="CONTROL_FLOW",
+                       detected_properties='{"legacy_indicator":"GOTO"}',
+                       evidence_refs='[{"artifact_id":"art-1","line_start":10,"line_end":10,"rule":"COBOL_GOTO","snippet":"GO TO PARA"}]')
+
+        rs = load_ruleset()
+        compute_assessment(db, "test-app-1", ruleset=rs)
+
+        # Directly compute component assessment
+        comp_direct = compute_component_assessment(db, "comp-goto", ruleset=rs)
+        assert comp_direct is not None
+
+        # Build recommendations
+        recs = build_recommendations(db, "test-app-1")
+        comp_rec = next((r for r in recs["recommendations"] if r["component_id"] == "comp-goto"), None)
+        assert comp_rec is not None
+
+        # Both must report the exact same complexity score and classification
+        assert comp_rec["complexity_score"] == comp_direct["complexity_score"], \
+            f"Recommendation complexity {comp_rec['complexity_score']} != direct {comp_direct['complexity_score']}"
+        assert comp_rec["complexity_classification"] == comp_direct["complexity_classification"]
+
+    def test_all_v2_rules_have_valid_evaluation_scope(self):
+        """Verify that all rules in default_ruleset_v2.json declare evaluation_scope."""
+        rs = load_ruleset()
+        valid_scopes = {"component", "artifact", "dependency", "application"}
+        for r in rs["rules"]:
+            scope = r.get("evaluation_scope")
+            assert scope in valid_scopes, f"Rule {r['rule_id']} missing valid evaluation_scope: got {scope}"

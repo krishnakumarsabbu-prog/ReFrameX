@@ -2,19 +2,19 @@
 
 ## Grounded in Measured Facts
 
-All claims below are grounded in measured facts from the test suite (107 tests passing) and accuracy report (156 components extracted with 100% precision and recall against hand-verified ground truth).
+All claims below are grounded in measured facts from the test suite (132 tests passing) and accuracy report (99.36% precision and recall across 16 synthetic benchmark samples with self-authored ground truth: 155 TP / 1 FP / 1 FN).
 
 ## What Is Automatic
 
 The following are fully automated and require no human input after artifact upload:
 
 1. **Artifact classification**: Extension + content signature detection, encoding identification
-2. **Component extraction**: 156 components across 16 ground-truth samples with 100% precision/recall
+2. **Component extraction**: 155 components across 16 ground-truth samples with 99.36% precision/recall
 3. **Dependency discovery**: Static CALL, COPY, EXEC SQL, and JCL reference extraction
 4. **Graph analysis**: Circular dependency detection, single-point-of-failure identification, blast-radius computation
-5. **Complexity scoring**: 24 complexity rules across 8 domains, deterministic and reproducible
-6. **Confidence scoring**: 11 confidence rules that adjust based on artifact coverage
-7. **Readiness scoring**: 13 readiness rules that measure documentation and dependency completeness
+5. **Complexity scoring**: 34 complexity rules across 8 domains, deterministic and reproducible
+6. **Confidence scoring**: 23 confidence rules that adjust based on artifact coverage and completeness
+7. **Readiness scoring**: 23 readiness rules that measure documentation and dependency completeness
 8. **Finding generation**: Material conclusions with evidence class, line references, and rule citations
 9. **Recommendation generation**: Prioritized, evidence-linked refactoring actions
 10. **Report generation**: Executive report with 19 sections, JSON/HTML export

@@ -10,16 +10,16 @@ interface RingProgressProps {
 
 export default function RingProgress({
   value,
-  size = 120,
-  stroke = 10,
+  size = 112,
+  stroke = 7,
   label,
   sublabel,
-  color = 'rgb(var(--accent-rgb))',
-  trackColor = 'rgba(255,255,255,0.5)',
+  color = '#202124',
+  trackColor = '#E3E5E7',
 }: RingProgressProps) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const clamped = Math.max(0, Math.min(100, value));
+  const clamped = Math.max(0, Math.min(100, Math.round(value)));
   const offset = circumference - (clamped / 100) * circumference;
 
   return (
@@ -44,15 +44,25 @@ export default function RingProgress({
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className="transition-all duration-500"
+            className="transition-all duration-500 ease-out"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold text-ink">{clamped}</span>
-          {sublabel && <span className="text-[10px] text-ink-soft mt-0.5">{sublabel}</span>}
+          <span className="font-mono text-xl font-normal text-[#202124] tabular-nums leading-none">
+            {clamped}%
+          </span>
+          {sublabel && (
+            <span className="mt-1 font-mono text-[9px] uppercase tracking-wider text-[#777D83]">
+              {sublabel}
+            </span>
+          )}
         </div>
       </div>
-      {label && <span className="text-xs font-medium text-ink-muted text-center mt-2 leading-tight">{label}</span>}
+      {label && (
+        <span className="mt-2 text-center text-xs font-medium text-[#777D83]">
+          {label}
+        </span>
+      )}
     </div>
   );
 }

@@ -34,7 +34,7 @@
 
 ## Accuracy and False-Positive Risk
 
-- **Parser accuracy**: 100% precision and recall against 16 hand-verified ground-truth samples (156 components). This is measured, not estimated.
+- **Parser accuracy**: 99.36% precision and recall (155 TP / 1 FP / 1 FN) against 16 synthetic benchmark samples with self-authored ground truth. This is measured, not estimated.
 - **Static extraction only**: No full COBOL semantic analysis. False positives are possible for:
   - Commented-out code that mimics active statements (mitigated: comment detection in all parsers)
   - String literals containing keywords (mitigated: string-aware parsing)
@@ -63,7 +63,7 @@ ReframeX operates on artifacts as files. If source is in Endevor, it must be exp
 
 ## Ownership of the Scoring Model
 
-- The ruleset is a JSON file (`default_ruleset_v1.json`) that is versioned and schema-validated
+- The ruleset is a JSON file (`default_ruleset_v2.json`) that is versioned and schema-validated
 - Domain weights, rule weights, thresholds, and detection conditions are all in the ruleset
 - The ruleset can be replaced or versioned without code changes
 - Rule maintenance: A domain expert edits the JSON ruleset; the schema validator ensures structural integrity
@@ -71,7 +71,7 @@ ReframeX operates on artifacts as files. If source is in Endevor, it must be exp
 
 ## Rule Maintenance
 
-1. Edit `backend/app/assessment/rulesets/default_ruleset_v1.json`
+1. Edit `backend/app/assessment/rulesets/default_ruleset_v2.json`
 2. Validate against `backend/app/assessment/ruleset_schema.json`
 3. Run `python -m pytest tests/test_scoring.py` to verify scores are still valid
 4. Run `python -m app.assessment.accuracy_report` to verify parser accuracy is unaffected

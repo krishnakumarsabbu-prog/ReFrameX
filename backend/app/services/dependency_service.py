@@ -187,17 +187,24 @@ def discover_dependencies(db: Session, application_id: str) -> int:
                 if dep:
                     deps_created += 1
 
-        # --- COBOL: CALL dynamic → program-to-program (Inferred) ---
-        elif comp.component_type == "PROGRAM" and props.get("call_type") == "dynamic":
+        # --- COBOL: CALL dynamic → program-to-program (Inferred or Unknown) (A5) ---
+        elif comp.component_type == "PROGRAM" and props.get("call_type") in ("dynamic", "dynamic_resolved", "dynamic_unresolved"):
+            is_unresolved = props.get("call_type") == "dynamic_unresolved" or comp.evidence_class == "Unknown"
             target_comp = _resolve_target(db, application_id, comp.name, "PROGRAM", by_name_type, comp)
             source_prog = _find_source_program(db, application_id, comp, by_name_type)
             if source_prog:
+                dep_ev_class = "Unknown" if is_unresolved else "Inferred"
+                desc = (
+                    f"Unresolved dynamic CALL via variable {props.get('target_variable', comp.name)}"
+                    if is_unresolved else
+                    f"Dynamic CALL to {comp.name} via variable {props.get('target_variable', '')}"
+                )
                 dep = _create_dependency(
                     db, application_id, source_prog, target_comp,
                     REL_CALLS_DYNAMIC, "static_extraction",
-                    comp.evidence_class,
+                    dep_ev_class,
                     comp, ev_ref,
-                    f"Dynamic CALL via variable {props.get('target_variable', comp.name)}",
+                    desc,
                 )
                 if dep:
                     deps_created += 1
@@ -807,101 +814,180 @@ def _max_depth(node: str, adj: dict[str, list[str]], visited: set[str]) -> int:
     return max_child + 1
 
 
+def tarjan_scc(adj: dict[str, list[str]]) -> list[list[str]]:
+    """Compute strongly connected components using Tarjan's algorithm (A7)."""
+    index = 0
+    indices: dict[str, int] = {}
+    lowlinks: dict[str, int] = {}
+    stack: list[str] = []
+    on_stack: set[str] = set()
+    sccs: list[list[str]] = []
+
+    all_nodes = set(adj.keys())
+    for nbrs in adj.values():
+        all_nodes.update(nbrs)
+
+    def strongconnect(v: str):
+        nonlocal index
+        indices[v] = index
+        lowlinks[v] = index
+        index += 1
+        stack.append(v)
+        on_stack.add(v)
+
+        for w in adj.get(v, []):
+            if w not in indices:
+                strongconnect(w)
+                lowlinks[v] = min(lowlinks[v], lowlinks[w])
+            elif w in on_stack:
+                lowlinks[v] = min(lowlinks[v], indices[w])
+
+        if lowlinks[v] == indices[v]:
+            scc = []
+            while True:
+                w = stack.pop()
+                on_stack.remove(w)
+                scc.append(w)
+                if w == v:
+                    break
+            sccs.append(scc)
+
+    for node in sorted(all_nodes):
+        if node not in indices:
+            strongconnect(node)
+
+    return sccs
+
+
+def find_cycles_tarjan(adj: dict[str, list[str]]) -> list[dict]:
+    """Find cycles using Tarjan SCC (A7).
+    Reports each SCC with > 1 node, and self-loops (node with edge to itself),
+    with size, members, and one example cycle path via BFS within the SCC.
+    """
+    sccs = tarjan_scc(adj)
+    cycles = []
+    for scc in sccs:
+        if len(scc) > 1:
+            example_path = _find_scc_cycle_path(scc[0], set(scc), adj)
+            cycles.append({
+                "size": len(scc),
+                "members": sorted(scc),
+                "is_self_loop": False,
+                "example_path": example_path,
+                "example_cycle_path": example_path,
+            })
+        elif len(scc) == 1:
+            node = scc[0]
+            if node in adj.get(node, []):
+                cycles.append({
+                    "size": 1,
+                    "members": [node],
+                    "is_self_loop": True,
+                    "example_path": [node, node],
+                    "example_cycle_path": [node, node],
+                })
+    return cycles
+
+
+def _find_scc_cycle_path(start: str, scc_set: set[str], adj: dict[str, list[str]]) -> list[str]:
+    """Find an example cycle path through start using BFS within scc_set."""
+    for first_step in adj.get(start, []):
+        if first_step not in scc_set:
+            continue
+        if first_step == start:
+            return [start, start]
+        visited = {first_step}
+        queue = [[start, first_step]]
+        while queue:
+            path = queue.pop(0)
+            curr = path[-1]
+            for nbr in adj.get(curr, []):
+                if nbr == start:
+                    return path + [start]
+                if nbr in scc_set and nbr not in visited:
+                    visited.add(nbr)
+                    queue.append(path + [nbr])
+    return list(scc_set) + [start]
+
+
 def _find_circular_paths(start: str, adj: dict[str, list[str]]) -> list[list[str]]:
-    """Find circular paths starting and ending at the given node."""
-    paths: list[list[str]] = []
-    _dfs_circular(start, start, adj, set(), [], paths, max_depth=10)
+    """Find circular paths starting and ending at the given node using Tarjan SCC."""
+    cycles = find_cycles_tarjan(adj)
+    paths = []
+    for c in cycles:
+        if start in c["members"]:
+            paths.append(c["example_path"])
     return paths
 
 
-def _dfs_circular(
-    start: str, current: str, adj: dict[str, list[str]],
-    visited: set[str], path: list[str], results: list[list[str]],
-    max_depth: int = 10,
-) -> None:
-    if len(path) > max_depth:
-        return
-    if current in visited and current == start and len(path) > 0:
-        results.append(list(path))
-        return
-    if current in visited:
-        return
-    visited.add(current)
-    path.append(current)
-    for neighbor in adj.get(current, []):
-        if neighbor == start and len(path) >= 1:
-            results.append(list(path) + [start])
-        elif neighbor not in visited:
-            _dfs_circular(start, neighbor, adj, visited, path, results, max_depth)
-    visited.discard(current)
-    path.pop()
-
-
-def _is_single_point(node: str, adj: dict[str, list[str]], reverse_adj: dict[str, list[str]]) -> bool:
-    """Check if removing this node would disconnect upstream from downstream."""
-    downstream = _bfs_set(node, adj)
+def _is_choke_point(node: str, adj: dict[str, list[str]], reverse_adj: dict[str, list[str]]) -> bool:
+    """Choke point (dominance-based) (A8).
+    A node is a choke point if it has at least one upstream and one downstream component
+    and removing it disconnects every upstream-to-downstream path for at least one such pair.
+    If a bypass path exists between that pair, it is NOT a choke point for that pair.
+    """
     upstream = _bfs_set(node, reverse_adj)
-    if not downstream or not upstream:
+    downstream = _bfs_set(node, adj)
+    if not upstream or not downstream:
         return False
-    # Check if any upstream node can reach any downstream node without going through this node
-    for up_node in upstream:
-        for neighbor in adj.get(up_node, []):
-            if neighbor == node:
+
+    # Check if removing node disconnects all paths for at least one (u, w) pair
+    for u in upstream:
+        for w in downstream:
+            # Does a path exist from u to w in G?
+            if not _can_reach_without_node(u, w, adj, blocked=""):
                 continue
-            if neighbor in downstream or _can_reach(neighbor, downstream, adj, node):
-                return False
-    return True
+            # Does a bypass path exist from u to w in G \ {node}?
+            if not _can_reach_without_node(u, w, adj, blocked=node):
+                # Every path from u to w passed through node! Node is a choke point.
+                return True
 
-
-def _can_reach(start: str, targets: set[str], adj: dict[str, list[str]], blocked: str) -> bool:
-    visited: set[str] = {blocked}
-    queue = [start]
-    while queue:
-        node = queue.pop(0)
-        if node in visited:
-            continue
-        visited.add(node)
-        if node in targets:
-            return True
-        for neighbor in adj.get(node, []):
-            if neighbor not in visited:
-                queue.append(neighbor)
     return False
 
 
-def _connected_components(node: str, adj: dict[str, list[str]], reverse_adj: dict[str, list[str]]) -> list[dict]:
-    """Get components connected to the given node (directly or indirectly)."""
-    all_adj: dict[str, list[str]] = defaultdict(list)
-    for k, v in adj.items():
-        all_adj[k].extend(v)
-    for k, v in reverse_adj.items():
-        all_adj[k].extend(v)
+def _can_reach_without_node(start: str, target: str, adj: dict[str, list[str]], blocked: str) -> bool:
+    """Check if target is reachable from start without visiting blocked node."""
+    if start == blocked or target == blocked:
+        return False
+    visited: set[str] = {blocked} if blocked else set()
+    queue = [start]
+    while queue:
+        curr = queue.pop(0)
+        if curr in visited:
+            continue
+        visited.add(curr)
+        if curr == target:
+            return True
+        for nbr in adj.get(curr, []):
+            if nbr not in visited:
+                queue.append(nbr)
+    return False
 
-    visited = _bfs_set(node, dict(all_adj))
-    components_list: list[dict] = []
-    for cid in visited:
-        components_list.append({"id": cid})
-    return components_list
+
+# Backward compatibility alias
+_is_single_point = _is_choke_point
 
 
 def _count_circular(adj: dict[str, list[str]]) -> int:
-    """Count nodes that participate in circular dependencies."""
-    count = 0
-    for node in adj:
-        paths = _find_circular_paths(node, adj)
-        if paths:
-            count += 1
-    return count
+    """Count nodes that participate in circular dependencies via Tarjan SCC."""
+    cycles = find_cycles_tarjan(adj)
+    nodes = set()
+    for c in cycles:
+        nodes.update(c["members"])
+    return len(nodes)
 
 
-def _count_single_points(db: Session, app_id: str, deps: list[Dependency], adj: dict[str, list[str]]) -> int:
-    """Count potential single points of dependency."""
+def _count_choke_points(db: Session, app_id: str, deps: list[Dependency], adj: dict[str, list[str]]) -> int:
+    """Count choke points (dominance-based) across the dependency graph (A8)."""
     reverse_adj = _build_reverse_adjacency(deps)
     count = 0
     for node in adj:
-        if _is_single_point(node, adj, reverse_adj):
+        if _is_choke_point(node, adj, reverse_adj):
             count += 1
     return count
+
+
+_count_single_points = _count_choke_points
 
 
 def _dep_to_dict(d: Dependency) -> dict:

@@ -1,0 +1,14 @@
+-- SYNTHETIC fixture — IDCAMS for VSAM cluster definition
+ DEFINE CLUSTER (
+     NAME (PAYROLL.PAYFILE.VSAM)
+     CYLINDERS (10 5)
+     RECORDSIZE (80 80)
+     KEYS (6 0)
+     INDEXED
+ ) -
+ DATA (
+     NAME (PAYROLL.PAYFILE.VSAM.DATA)
+ ) -
+ INDEX (
+     NAME (PAYROLL.PAYFILE.VSAM.INDEX)
+ )

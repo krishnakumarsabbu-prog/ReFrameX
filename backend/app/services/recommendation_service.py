@@ -27,7 +27,11 @@ from app.models.models import (
     Dependency,
     AssessmentRecord,
 )
-from app.assessment.scoring_engine import DOMAIN_LABELS
+from app.assessment.scoring_engine import (
+    DOMAIN_LABELS,
+    compute_component_assessment,
+    load_ruleset,
+)
 
 
 def _parse_json(val: str | None, default: Any) -> Any:
@@ -43,12 +47,20 @@ def _get_latest_assessment(db: Session, application_id: str) -> dict | None:
     record = db.query(AssessmentRecord).filter(
         AssessmentRecord.application_id == application_id
     ).order_by(AssessmentRecord.computed_at.desc()).first()
-    if not record:
-        return None
+    if record:
+        try:
+            return json.loads(record.result_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    # Fallback to compute dynamically if no persisted assessment record exists
     try:
-        return json.loads(record.result_json)
-    except (json.JSONDecodeError, TypeError):
-        return None
+        from app.assessment.scoring_engine import compute_assessment, serialize_assessment
+        res = compute_assessment(db, application_id)
+        if res:
+            return serialize_assessment(res)
+    except Exception:
+        pass
+    return None
 
 
 def _get_component_dependency_info(
@@ -99,6 +111,7 @@ def build_recommendations(db: Session, application_id: str) -> dict:
     if not assessment:
         return {"application_id": application_id, "total": 0, "by_category": {}, "recommendations": []}
 
+    ruleset = load_ruleset()
     components = db.query(Component).filter(
         Component.application_id == application_id
     ).order_by(Component.component_type, Component.name).all()
@@ -130,20 +143,19 @@ def build_recommendations(db: Session, application_id: str) -> dict:
         dep_info = _get_component_dependency_info(db, application_id, comp.id)
         findings_info = _get_component_findings_info(db, application_id, comp.id)
 
-        # Get component complexity from assessment if available
-        # We use a simplified heuristic from component properties + dependency count
-        props = _parse_json(comp.detected_properties, {})
-        complexity_factors: list[str] = []
-        complexity_score = 0.0
-
-        # Build component-specific complexity from fired rules for this component
-        fired_rules = assessment.get("fired_rules", [])
-        comp_fired = [r for r in fired_rules if any(
-            ref.get("artifact_id") == comp.source_artifact_id for ref in r.get("evidence_refs", [])
-        )]
-        negative_count = sum(1 for r in comp_fired if r.get("impact") == "negative")
-        complexity_score = min(100.0, negative_count * 15 + dep_info["total"] * 5)
-        complexity_class = "Low" if complexity_score < 35 else "Medium" if complexity_score < 65 else "High"
+        # Get component complexity using the unified compute_component_assessment engine
+        comp_assessment = compute_component_assessment(db, comp.id, ruleset=ruleset)
+        if comp_assessment:
+            complexity_score = comp_assessment["complexity_score"]
+            complexity_class = comp_assessment["complexity_classification"]
+            comp_fired = comp_assessment.get("fired_rules", [])
+        else:
+            fired_rules = assessment.get("fired_rules", [])
+            comp_fired = [r for r in fired_rules if any(
+                ref.get("artifact_id") == comp.source_artifact_id for ref in r.get("evidence_refs", [])
+            )]
+            complexity_score = 0.0
+            complexity_class = "Low"
 
         # Determine category
         has_unresolved = dep_info["unresolved"] > 0
@@ -208,19 +220,27 @@ def build_recommendations(db: Session, application_id: str) -> dict:
             reason = "Insufficient evidence to classify as a good candidate; further analysis required."
             next_action = "Gather additional evidence and reassess"
 
-        # Candidate considerations are hypotheses, not final patterns
+        # Candidate considerations are hypotheses, not final patterns (A4)
         candidate_considerations: list[str] = []
         if category == "Good Refactoring Candidate":
             candidate_considerations.append(
-                "Target platform pattern is a hypothesis for further evaluation — do not assume OpenShift or any specific runtime"
+                "Hypothesis for further evaluation: Target platform options include distributed services, refactor in place, retain, or containerized platform (such as OpenShift as ONE possible target)."
             )
             if comp.component_type == "PROGRAM" and comp.technology == "COBOL":
-                candidate_considerations.append("Consider service extraction patterns — evaluate during feasibility assessment")
+                candidate_considerations.append(
+                    "Hypothesis for further evaluation: Consider service extraction, modular refactoring, or containerization alternatives."
+                )
             if comp.component_type == "BATCH_JOB":
-                candidate_considerations.append("Consider batch-to-cloud patterns — evaluate during feasibility assessment")
+                candidate_considerations.append(
+                    "Hypothesis for further evaluation: Consider containerized batch, cloud-native orchestration, or event-driven workflow alternatives."
+                )
         elif category == "Retain on Mainframe for Now":
             candidate_considerations.append(
-                "Retain on mainframe until complexity is reduced or dependencies are decoupled — revisit in next assessment cycle"
+                "Hypothesis for further evaluation: Retain on mainframe until complexity is reduced or dependencies are decoupled, or evaluate in-place modernization."
+            )
+        else:
+            candidate_considerations.append(
+                "Hypothesis for further evaluation: Complete artifact discovery and dependency resolution before selecting a target architecture."
             )
 
         recommendations.append({

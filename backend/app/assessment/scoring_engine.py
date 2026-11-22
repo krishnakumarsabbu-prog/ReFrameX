@@ -15,9 +15,12 @@ Guarantees:
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 import uuid
+
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,14 +34,16 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-from app.models.models import Application, Artifact, Component, Dependency, AnalysisRun
+from app.models.models import Application, Artifact, Component, Dependency, AnalysisRun, Finding
+from app.assessment.ruleset_validator import validate_ruleset
 
 
 # ---- Constants ----
 
-MODEL_VERSION = "reframex-scoring-v1"
+MODEL_VERSION = "reframex-scoring-v2"
 RULESET_DIR = Path(__file__).resolve().parent / "rulesets"
-DEFAULT_RULESET_FILE = RULESET_DIR / "default_ruleset_v1.json"
+DEFAULT_RULESET_FILE = RULESET_DIR / "default_ruleset_v2.json"
+LEGACY_RULESET_FILE = RULESET_DIR / "default_ruleset_v1.json"
 SCHEMA_FILE = Path(__file__).resolve().parent / "ruleset_schema.json"
 
 DOMAINS = [
@@ -104,6 +109,9 @@ class DomainResult:
     evidence_refs: list[dict] = field(default_factory=list)
     has_evidence: bool = True
     not_evidenced_notes: list[str] = field(default_factory=list)
+    applicable_rule_weights: float = 100.0
+    evidence_quality_factor: float = 1.0
+    parse_success_ratio: float = 1.0
 
 
 @dataclass
@@ -130,13 +138,29 @@ class AssessmentResult:
     recommended_next_steps: list[str]
     evidence_refs: list[dict]
     duration_ms: int
+    domains_assessed: int = 8
+    coverage_ratio: float = 1.0
+    unassessed_domains: list[str] = field(default_factory=list)
+    rule_counts: dict[str, Any] = field(default_factory=dict)
+    version_comparison_warning: str | None = None
+    evaluation_errors: list[dict] = field(default_factory=list)
 
 
 # ---- Ruleset loading & validation ----
 
-def load_ruleset(filepath: Path | None = None) -> dict:
+def load_ruleset(filepath: Path | str | None = None) -> dict:
     """Load and validate a ruleset JSON file. Raises ValueError on malformed rules."""
-    path = filepath or DEFAULT_RULESET_FILE
+    if filepath is None:
+        path = DEFAULT_RULESET_FILE
+    elif isinstance(filepath, str):
+        p = Path(filepath)
+        if not p.suffix:
+            path = RULESETS_DIR / f"{filepath}.json"
+        else:
+            path = p
+    else:
+        path = filepath
+
     if not path.exists():
         raise ValueError(f"Ruleset file not found: {path}")
     with open(path) as f:
@@ -166,6 +190,9 @@ def load_ruleset(filepath: Path | None = None) -> dict:
     if dupes:
         raise ValueError(f"Duplicate rule IDs: {dupes}")
 
+    # Validate condition syntax, identifiers, and safe comparisons
+    validate_ruleset(ruleset)
+
     return ruleset
 
 
@@ -194,7 +221,16 @@ def _manual_validate_ruleset(ruleset: dict) -> None:
 
 
 def get_ruleset_info(ruleset: dict) -> dict:
-    """Return ruleset metadata for API exposure."""
+    """Return ruleset metadata and dynamically derived counts (A3)."""
+    rules = ruleset.get("rules", [])
+    by_measure: dict[str, int] = {}
+    by_domain: dict[str, int] = {}
+    for r in rules:
+        m = r.get("measure", "unknown")
+        d = r.get("domain", "unknown")
+        by_measure[m] = by_measure.get(m, 0) + 1
+        by_domain[d] = by_domain.get(d, 0) + 1
+
     return {
         "ruleset_id": ruleset["ruleset_id"],
         "version": ruleset["version"],
@@ -203,8 +239,17 @@ def get_ruleset_info(ruleset: dict) -> dict:
         "changelog": ruleset.get("changelog", []),
         "domain_weights": ruleset["domain_weights"],
         "thresholds": ruleset["thresholds"],
+        "baselines": ruleset.get("baselines", {"complexity": 0.0, "confidence": 0.0, "readiness": 0.0}),
+        "hyperbolic_k": ruleset.get("hyperbolic_k", 20.0),
         "model_version": MODEL_VERSION,
-        "rule_count": len(ruleset["rules"]),
+        "rule_count": len(rules),
+        "rule_counts_by_measure": by_measure,
+        "rule_counts_by_domain": by_domain,
+        "rule_counts": {
+            "total": len(rules),
+            "by_measure": by_measure,
+            "by_domain": by_domain,
+        },
     }
 
 
@@ -229,8 +274,11 @@ class EvidenceBundle:
     has_bms: bool = False
     has_cobol: bool = False
     has_assembler: bool = False
+    has_cics_transactions: bool = False
     has_security_components: bool = False
     has_embedded_sql: bool = False
+    has_copybooks: bool = False
+    findings: list[Finding] = field(default_factory=list)
 
 
 def collect_evidence(db: Session, application_id: str) -> EvidenceBundle | None:
@@ -242,6 +290,7 @@ def collect_evidence(db: Session, application_id: str) -> EvidenceBundle | None:
     artifacts = db.query(Artifact).filter(Artifact.application_id == application_id).all()
     components = db.query(Component).filter(Component.application_id == application_id).all()
     dependencies = db.query(Dependency).filter(Dependency.application_id == application_id).all()
+    findings = db.query(Finding).filter(Finding.application_id == application_id).all()
 
     # Build indexes
     by_type: dict[str, list[Component]] = {}
@@ -251,6 +300,19 @@ def collect_evidence(db: Session, application_id: str) -> EvidenceBundle | None:
     by_category: dict[str, list[Artifact]] = {}
     for a in artifacts:
         by_category.setdefault(a.category, []).append(a)
+        # Normalize category aliases so lookup by either spelling works
+        if a.category == "SQL":
+            by_category.setdefault("SQL_DDL", []).append(a)
+        elif a.category == "SQL_DDL":
+            by_category.setdefault("SQL", []).append(a)
+        elif a.category == "BMS":
+            by_category.setdefault("BMS_MAP", []).append(a)
+        elif a.category == "BMS_MAP":
+            by_category.setdefault("BMS", []).append(a)
+        elif a.category == "HLASM":
+            by_category.setdefault("ASSEMBLER", []).append(a)
+        elif a.category == "ASSEMBLER":
+            by_category.setdefault("HLASM", []).append(a)
 
     # Compute dependency stats
     unresolved = sum(1 for d in dependencies if d.evidence_class == "Unknown")
@@ -272,12 +334,14 @@ def collect_evidence(db: Session, application_id: str) -> EvidenceBundle | None:
     # Detect what we have
     categories_set = {a.category for a in artifacts}
     has_jcl = bool(by_category.get("JCL"))
-    has_ddl = bool(by_category.get("SQL_DDL"))
-    has_bms = bool(by_category.get("BMS_MAP"))
+    has_ddl = bool(by_category.get("SQL_DDL") or by_category.get("SQL"))
+    has_bms = bool(by_category.get("BMS_MAP") or by_category.get("BMS"))
     has_cobol = bool(by_category.get("COBOL"))
-    has_assembler = bool(by_category.get("ASSEMBLER"))
+    has_assembler = bool(by_category.get("ASSEMBLER") or by_category.get("HLASM"))
+    has_cics_transactions = any(c.component_type == "TRANSACTION" for c in components)
     has_embedded_sql = any(c.component_type == "TABLE" and c.technology == "SQL" for c in components)
     has_security = any(c.component_type == "SECURITY_RESOURCE" for c in components)
+    has_copybooks = bool(by_category.get("Copybook")) or any(c.component_type == "COPYBOOK" for c in components)
 
     # Missing copybooks
     unknown_copybooks = [c for c in components if c.component_type == "COPYBOOK" and c.evidence_class == "Unknown"]
@@ -307,53 +371,66 @@ def collect_evidence(db: Session, application_id: str) -> EvidenceBundle | None:
         has_bms=has_bms,
         has_cobol=has_cobol,
         has_assembler=has_assembler,
+        has_cics_transactions=has_cics_transactions,
         has_security_components=has_security,
         has_embedded_sql=has_embedded_sql,
+        has_copybooks=has_copybooks,
+        findings=findings,
     )
 
 
 def _count_circular_nodes(adj: dict[str, list[str]]) -> int:
-    """Count nodes participating in circular dependencies."""
-    count = 0
-    for node in adj:
-        if _has_cycle_from(node, node, adj, set(), 10):
-            count += 1
-    return count
+    """Count nodes participating in circular dependencies using Tarjan SCC (A7)."""
+    from app.services.dependency_service import find_cycles_tarjan
+    cycles = find_cycles_tarjan(adj)
+    nodes = set()
+    for c in cycles:
+        nodes.update(c["members"])
+    return len(nodes)
 
 
-def _has_cycle_from(start: str, current: str, adj: dict[str, list[str]], visited: set, max_depth: int) -> bool:
-    if max_depth <= 0:
+def _is_choke_point_node(node: str, adj: dict[str, list[str]], reverse_adj: dict[str, list[str]]) -> bool:
+    """Choke point (dominance-based) (A8).
+    A node is a choke point if it has at least one upstream and one downstream component
+    and removing it disconnects every upstream-to-downstream path for at least one such pair.
+    """
+    upstream = _bfs_set(node, reverse_adj)
+    downstream = _bfs_set(node, adj)
+    if not upstream or not downstream:
         return False
-    for neighbor in adj.get(current, []):
-        if neighbor == start:
-            return True
-        if neighbor not in visited:
-            visited.add(neighbor)
-            if _has_cycle_from(start, neighbor, adj, visited, max_depth - 1):
+
+    for u in upstream:
+        for w in downstream:
+            if not _can_reach_without(u, w, adj, blocked=""):
+                continue
+            if not _can_reach_without(u, w, adj, blocked=node):
                 return True
-            visited.discard(neighbor)
+    return False
+
+
+def _can_reach_without(start: str, target: str, adj: dict[str, list[str]], blocked: str) -> bool:
+    if start == blocked or target == blocked:
+        return False
+    visited: set[str] = {blocked} if blocked else set()
+    queue = [start]
+    while queue:
+        curr = queue.pop(0)
+        if curr in visited:
+            continue
+        visited.add(curr)
+        if curr == target:
+            return True
+        for nbr in adj.get(curr, []):
+            if nbr not in visited:
+                queue.append(nbr)
     return False
 
 
 def _count_single_points(adj: dict[str, list[str]], reverse_adj: dict[str, list[str]]) -> int:
-    """Approximate single-point-of-dependency count."""
+    """Count choke points (dominance-based) (A8)."""
     count = 0
     for node in adj:
-        downstream = _bfs_set(node, adj)
-        upstream = _bfs_set(node, reverse_adj)
-        if not downstream or not upstream:
-            continue
-        is_sp = True
-        for up_node in upstream:
-            for neighbor in adj.get(up_node, []):
-                if neighbor == node:
-                    continue
-                if neighbor in downstream:
-                    is_sp = False
-                    break
-            if not is_sp:
-                break
-        if is_sp:
+        if _is_choke_point_node(node, adj, reverse_adj):
             count += 1
     return count
 
@@ -405,11 +482,20 @@ def _artifact_props(artifact: Artifact) -> dict[str, str]:
     }
 
 
-def _evaluate_condition(condition: str, context: dict) -> bool:
+_LOGGED_CONDITION_ERRORS: set[tuple[str, str]] = set()
+
+
+def _evaluate_condition(
+    condition: str,
+    context: dict,
+    rule_id: str | None = None,
+    evaluation_errors: list[dict] | None = None,
+) -> bool | None:
     """Evaluate a detection condition string against a context dict.
 
     Conditions are simple expressions using 'and', 'or', '==', '!=',
     'in', 'contains', 'present', 'not present', '>=', '<=', '>', '<'.
+    Returns True/False on success, or None on evaluation exception.
     """
     try:
         cond = condition
@@ -447,7 +533,7 @@ def _evaluate_condition(condition: str, context: dict) -> bool:
                 return ref
             return f'_lookup("{ref}", ctx)'
 
-        cond = re.sub(r"\b[a-z_][a-z0-9_.]*\b", _replace_ref, cond)
+        cond = re.sub(r"\b[A-Za-z_][A-Za-z0-9_.]*\b", _replace_ref, cond)
 
         # Restore quoted strings
         for key, val in placeholders.items():
@@ -461,25 +547,46 @@ def _evaluate_condition(condition: str, context: dict) -> bool:
         }
         result = eval(cond, {"__builtins__": {}}, local_vars)  # noqa: S307
         return bool(result)
-    except Exception:
-        return False
+    except Exception as e:
+        rule_key = rule_id or "unknown"
+        exc_name = type(e).__name__
+        err_tuple = (rule_key, exc_name)
+        if err_tuple not in _LOGGED_CONDITION_ERRORS:
+            _LOGGED_CONDITION_ERRORS.add(err_tuple)
+            logger.warning(
+                "Condition evaluation failed for rule '%s' (%s: %s). Condition: '%s' (translated '%s')",
+                rule_key, exc_name, e, condition, cond if "cond" in locals() else condition,
+            )
+        if evaluation_errors is not None:
+            evaluation_errors.append({
+                "rule_id": rule_key,
+                "condition": condition,
+                "error_type": exc_name,
+                "error": str(e),
+            })
+        return None
 
 
 def _eval_lookup(ref: str, ctx: dict) -> Any:
     """Look up a dotted reference in the context."""
+    val = None
     # First try direct key (handles keys like "component.evidence_class")
     if ref in ctx:
-        return ctx[ref]
-    # Then try nested traversal
-    parts = ref.split(".")
-    val = ctx
-    for part in parts:
-        if isinstance(val, dict):
-            val = val.get(part, None)
-        else:
-            val = getattr(val, part, None)
-        if val is None:
-            return None
+        val = ctx[ref]
+    else:
+        # Then try nested traversal
+        parts = ref.split(".")
+        val = ctx
+        for part in parts:
+            if isinstance(val, dict):
+                val = val.get(part, None)
+            else:
+                val = getattr(val, part, None)
+            if val is None:
+                break
+
+    if isinstance(val, str) and val.isdigit():
+        return int(val)
     return val
 
 
@@ -510,7 +617,6 @@ def _build_component_context(component: Component, artifact: Artifact | None) ->
     """Build evaluation context for a single component."""
     props = _component_props(component)
     ctx = {
-        "component_type": component.component_type,
         "component_type": component.component_type,
         "technology": component.technology,
         "name": component.name,
@@ -569,6 +675,10 @@ def _build_application_context(evidence: EvidenceBundle) -> dict:
         "application.owner": app.owner,
         "application.business_domain": app.business_domain,
         "application.technology_stack": app.technology_stack,
+        "dependency_count": len(evidence.dependencies),
+        "unresolved_dependencies": evidence.unresolved_dependencies,
+        "circular_count": evidence.graph_stats.get("circular_count", 0),
+        "single_points": evidence.graph_stats.get("single_points", 0),
         "dependency_graph": {
             "total_edges": evidence.graph_stats.get("total_edges", 0),
             "circular_count": evidence.graph_stats.get("circular_count", 0),
@@ -582,15 +692,64 @@ def _build_application_context(evidence: EvidenceBundle) -> dict:
             "total_dependencies": evidence.dependency_summary.get("total_dependencies", 0),
         },
         "dependency_summary.unresolved_targets": evidence.unresolved_dependencies,
+        "has_cics_transactions": evidence.has_cics_transactions,
+        "has_assembler": evidence.has_assembler,
     }
 
 
 # ---- Scoring computation ----
 
+def _is_rule_applicable(rule: dict, evidence: EvidenceBundle) -> bool:
+    """Determine whether a rule is applicable to the given evidence bundle.
+    If the application's technology stack / artifact set does not contain the
+    prerequisites for the rule, it is deemed inapplicable and does not penalize
+    confidence completeness.
+    """
+    cond = rule.get("detection_condition", "")
+
+    # COBOL specific rules
+    if "COBOL" in cond or "technology == 'COBOL'" in cond or "artifact_category == 'COBOL'" in cond:
+        if not evidence.has_cobol:
+            return False
+
+    # JCL / Batch specific rules
+    if "JCL" in cond or "has_jcl" in cond or "artifact_category == 'JCL'" in cond:
+        if not evidence.has_jcl:
+            return False
+
+    # Copybook specific rules
+    if "has_copybooks" in cond or "no_unknown_copybooks" in cond or "has_unknown_copybooks" in cond:
+        if not evidence.has_copybooks and not evidence.has_cobol:
+            return False
+
+    # Assembler / HLASM specific rules
+    if "HLASM" in cond or "ASSEMBLER" in cond or "has_assembler" in cond:
+        if not evidence.has_assembler:
+            return False
+
+    # BMS / UI specific rules
+    if "BMS" in cond or "has_bms" in cond or "has_cics_transactions" in cond:
+        if not evidence.has_bms and not evidence.has_cics_transactions:
+            return False
+
+    # Database / SQL specific rules
+    if "has_ddl" in cond or "has_embedded_sql" in cond or "embedded_SQL_detected_but_no_DDL" in cond or "SQL" in cond:
+        if not evidence.has_ddl and not evidence.has_embedded_sql:
+            return False
+
+    # Security specific rules
+    if "has_security_components" in cond or "SECURITY_RESOURCE" in cond:
+        if not evidence.has_security_components:
+            return False
+
+    return True
+
+
 def evaluate_rules(
     ruleset: dict,
     evidence: EvidenceBundle,
     weight_overrides: dict[str, float] | None = None,
+    evaluation_errors: list[dict] | None = None,
 ) -> dict[str, dict[str, DomainResult]]:
     """Evaluate all rules against the evidence bundle.
 
@@ -602,6 +761,27 @@ def evaluate_rules(
     # Build artifact lookup map
     artifact_map = {a.id: a for a in evidence.artifacts}
 
+    # Calculate evidence quality factor (Evidence-based: 1.0, Inferred: 0.7, Assumed: 0.4, Unknown: 0.1)
+    if evidence.components:
+        classes = {c.evidence_class for c in evidence.components}
+        if "Evidence-based" in classes:
+            quality_factor = 1.0
+        elif "Inferred" in classes:
+            quality_factor = 0.7
+        elif "Assumed" in classes:
+            quality_factor = 0.4
+        else:
+            quality_factor = 0.1
+    else:
+        quality_factor = 1.0
+
+    # Calculate parse success ratio
+    if evidence.artifacts:
+        parsed_count = sum(1 for a in evidence.artifacts if a.parse_status == "parsed")
+        parse_ratio = parsed_count / len(evidence.artifacts)
+    else:
+        parse_ratio = 1.0
+
     # Initialize domain results for all 8 domains x 3 measures
     domain_results: dict[str, dict[str, DomainResult]] = {}
     for domain in DOMAINS:
@@ -612,7 +792,21 @@ def evaluate_rules(
                 measure=measure,
                 raw_score=0.0,
                 normalized_score=0.0,
+                evidence_quality_factor=round(quality_factor, 4),
+                parse_success_ratio=round(parse_ratio, 4),
             )
+
+    # Compute applicable positive weights for confidence per domain
+    applicable_conf_weights: dict[str, float] = {d: 0.0 for d in DOMAINS}
+    for r in rules:
+        if r["measure"] == "confidence" and r.get("impact") == "positive":
+            if _is_rule_applicable(r, evidence):
+                applicable_conf_weights[r["domain"]] += overrides.get(r["rule_id"], r["weight"])
+
+    for d in DOMAINS:
+        domain_results[d]["confidence"].applicable_rule_weights = (
+            applicable_conf_weights[d] if applicable_conf_weights[d] > 0 else 100.0
+        )
 
     # Track which domains have evidence per measure
     domain_has_evidence: dict[str, set[str]] = {d: set() for d in DOMAINS}
@@ -629,16 +823,26 @@ def evaluate_rules(
         firings: list[RuleFiring] = []
         dr = domain_results[domain][measure]
 
-        # Determine evaluation scope based on condition
+        # Determine evaluation scope based on declared scope or condition heuristic
         condition = rule["detection_condition"]
+        scope = rule.get("evaluation_scope")
+        if not scope:
+            if "component_type" in condition or "detected_properties" in condition or "component.evidence_class" in condition:
+                scope = "component"
+            elif "artifact_category" in condition or "artifact." in condition or "artifact " in condition:
+                scope = "artifact"
+            elif "dependency." in condition or "dependency " in condition:
+                scope = "dependency"
+            else:
+                scope = "application"
 
         # Component-level rules
-        if "component_type" in condition or "detected_properties" in condition or "component.evidence_class" in condition:
+        if scope == "component":
             for comp in evidence.components:
                 artifact = artifact_map.get(comp.source_artifact_id)
                 ctx = _build_component_context(comp, artifact)
                 ctx.update(app_ctx)
-                if _evaluate_condition(condition, ctx):
+                if _evaluate_condition(condition, ctx, rule_id=rule_id, evaluation_errors=evaluation_errors) is True:
                     firing = RuleFiring(
                         rule_id=rule_id,
                         domain=domain,
@@ -657,11 +861,11 @@ def evaluate_rules(
                     domain_has_evidence[domain].add(measure)
 
         # Artifact-level rules (check if condition references artifact_ or artifact.)
-        elif "artifact_category" in condition or "artifact." in condition or "artifact " in condition:
+        elif scope == "artifact":
             for artifact in evidence.artifacts:
                 ctx = _build_artifact_context(artifact)
                 ctx.update(app_ctx)
-                if _evaluate_condition(condition, ctx):
+                if _evaluate_condition(condition, ctx, rule_id=rule_id, evaluation_errors=evaluation_errors) is True:
                     firing = RuleFiring(
                         rule_id=rule_id,
                         domain=domain,
@@ -686,14 +890,14 @@ def evaluate_rules(
                     domain_has_evidence[domain].add(measure)
 
         # Dependency-level rules
-        elif "dependency" in condition:
+        elif scope == "dependency":
             for dep in evidence.dependencies:
                 ctx = {
                     "dependency.evidence_class": dep.evidence_class,
                     "dependency.relationship_type": dep.relationship_type,
                 }
                 ctx.update(app_ctx)
-                if _evaluate_condition(condition, ctx):
+                if _evaluate_condition(condition, ctx, rule_id=rule_id, evaluation_errors=evaluation_errors) is True:
                     ev = _parse_json_safe(dep.evidence_ref, {})
                     firing = RuleFiring(
                         rule_id=rule_id,
@@ -719,12 +923,19 @@ def evaluate_rules(
             ctx["has_ddl"] = evidence.has_ddl
             ctx["has_bms"] = evidence.has_bms
             ctx["has_cobol"] = evidence.has_cobol
+            ctx["has_assembler"] = evidence.has_assembler
+            ctx["has_cics_transactions"] = evidence.has_cics_transactions
+            ctx["has_copybooks"] = bool(evidence.artifacts_by_category.get("Copybook")) or any(c.component_type == "COPYBOOK" for c in evidence.components)
+            ctx["has_unknown_copybooks"] = len(evidence.copybook_components_unknown) > 0
+            ctx["no_unknown_copybooks"] = len(evidence.copybook_components_unknown) == 0
             ctx["has_embedded_sql"] = evidence.has_embedded_sql
             ctx["has_security_components"] = evidence.has_security_components
-            ctx["no_unknown_copybooks"] = len(evidence.copybook_components_unknown) == 0
+            ctx["has_config_artifacts"] = bool(evidence.artifacts_by_category.get("Config"))
+            ctx["unsupported_count"] = sum(1 for a in evidence.artifacts if a.support_level == "UNSUPPORTED")
+            ctx["unresolved_dependencies"] = evidence.unresolved_dependencies
             ctx["embedded_SQL_detected_but_no_DDL"] = evidence.has_embedded_sql and not evidence.has_ddl
 
-            if _evaluate_condition(condition, ctx):
+            if _evaluate_condition(condition, ctx, rule_id=rule_id, evaluation_errors=evaluation_errors) is True:
                 firing = RuleFiring(
                     rule_id=rule_id,
                     domain=domain,
@@ -743,22 +954,35 @@ def evaluate_rules(
                 domain_has_evidence[domain].add(measure)
 
         # Accumulate firings into domain result
-        for firing in firings:
-            dr.fired_rules.append(firing)
-            if firing.impact == "negative":
-                dr.raw_score += firing.points
-                dr.negative_factors.append(f"{firing.rule_id}: {firing.description}")
-            else:
-                # Positive impact: for complexity, positive reduces; for confidence/readiness, positive adds
-                if measure == "complexity":
-                    dr.raw_score -= firing.points
+        if measure in ("confidence", "readiness"):
+            # For confidence & readiness, preserve all individual firings for full line-level traceability,
+            # but accumulate points per rule to avoid saturation from multi-component/artifact firing.
+            if firings:
+                dr.fired_rules.extend(firings)
+                first = firings[0]
+                if first.impact == "negative":
+                    dr.raw_score += first.points
+                    dr.negative_factors.append(f"{first.rule_id}: {first.description}")
                 else:
+                    dr.raw_score += first.points
+                    dr.positive_factors.append(f"{first.rule_id}: {first.description}")
+                for firing in firings:
+                    for ref in firing.evidence_refs:
+                        dr.evidence_refs.append(ref)
+        else:
+            # Complexity: each firing adds points additively into hyperbolic saturation function
+            for firing in firings:
+                dr.fired_rules.append(firing)
+                if firing.impact == "negative":
                     dr.raw_score += firing.points
-                dr.positive_factors.append(f"{firing.rule_id}: {firing.description}")
+                    dr.negative_factors.append(f"{firing.rule_id}: {firing.description}")
+                else:
+                    dr.raw_score -= firing.points
+                    dr.positive_factors.append(f"{firing.rule_id}: {firing.description}")
 
-            # Collect evidence refs
-            for ref in firing.evidence_refs:
-                dr.evidence_refs.append(ref)
+                # Collect evidence refs
+                for ref in firing.evidence_refs:
+                    dr.evidence_refs.append(ref)
 
     # Mark domains with no evidence
     for domain in DOMAINS:
@@ -773,8 +997,11 @@ def normalize_domain_scores(
     domain_results: dict[str, dict[str, DomainResult]],
     ruleset: dict,
 ) -> None:
-    """Normalize raw domain scores to 0-100 and classify."""
-    thresholds = ruleset["thresholds"]
+    """Normalize raw domain scores to 0-100 and classify using saturating hyperbolic normalization (A8)
+    and configurable measure baselines (A2).
+    """
+    baselines = ruleset.get("baselines", {"complexity": 0.0, "confidence": 0.0, "readiness": 0.0})
+    k_val = float(ruleset.get("hyperbolic_k", 20.0))
 
     for domain in DOMAINS:
         for measure in MEASURES:
@@ -788,25 +1015,36 @@ def normalize_domain_scores(
             raw = dr.raw_score
 
             if measure == "complexity":
-                # Complexity: higher raw = more complex. Normalize using a soft cap.
-                # Use a sigmoid-like normalization: score = 100 * (raw / (raw + K))
-                # where K is a scaling constant. K=20 gives reasonable distribution.
-                K = 20.0
+                # Saturating (hyperbolic) normalization: 100 x raw / (raw + K)
                 if raw <= 0:
-                    # No negative factors — low complexity, but only if evidence exists
-                    normalized = max(0.0, 10.0 + raw)  # Small positive baseline from positive factors
+                    normalized = 0.0
                 else:
-                    normalized = 100.0 * (raw / (raw + K))
+                    normalized = 100.0 * (raw / (raw + k_val))
                 dr.normalized_score = max(0.0, min(100.0, normalized))
 
             elif measure == "confidence":
-                # Confidence: starts at 50, positive factors add, negative subtract, clamp 0-100
-                normalized = 50.0 + raw
-                dr.normalized_score = max(0.0, min(100.0, normalized))
+                # B1: Coverage-weighted confidence formula:
+                # 100 * (fired_positive_weights / applicable_weights) * quality_factor * parse_success_ratio
+                applicable_w = dr.applicable_rule_weights if dr.applicable_rule_weights > 0 else 100.0
+
+                distinct_pos: dict[str, float] = {}
+                distinct_neg: float = 0.0
+                for f in dr.fired_rules:
+                    if f.impact == "positive":
+                        distinct_pos[f.rule_id] = f.weight
+                    else:
+                        distinct_neg += abs(f.weight)
+
+                sum_pos = sum(distinct_pos.values())
+                ratio = min(1.0, sum_pos / applicable_w) if applicable_w > 0 else 0.0
+                conf_score = 100.0 * ratio * dr.evidence_quality_factor * dr.parse_success_ratio
+                conf_score -= distinct_neg
+                dr.normalized_score = max(0.0, min(100.0, conf_score))
 
             elif measure == "readiness":
-                # Readiness: starts at 50, positive factors add, negative subtract, clamp 0-100
-                normalized = 50.0 + raw
+                # Baseline 0 + raw, clamped to 0-100 (A2)
+                base = float(baselines.get("readiness", 0.0))
+                normalized = base + raw
                 dr.normalized_score = max(0.0, min(100.0, normalized))
 
 
@@ -814,29 +1052,49 @@ def aggregate_scores(
     domain_results: dict[str, dict[str, DomainResult]],
     ruleset: dict,
 ) -> dict[str, float]:
-    """Aggregate domain scores into overall scores using domain weights.
+    """Aggregate domain scores into overall scores using domain weights (A1).
 
-    Only domains with evidence contribute. Weights are renormalized over
-    domains that have evidence.
+    - Complexity: dynamically renormalized over EVIDENCED domains only.
+    - Confidence and Readiness: aggregate over ALL 8 domains using domain weights.
+      Unevidenced domains contribute 0 (not excluded, not 50).
+    - Confidence is capped by evidence coverage ratio: confidence <= coverage_cap(coverage_ratio).
     """
     domain_weights = ruleset["domain_weights"]
     scores: dict[str, float] = {}
 
-    for measure in MEASURES:
-        weighted_sum = 0.0
-        weight_total = 0.0
+    # 1. Complexity: evidenced domains only
+    evidenced_complexity = [d for d in DOMAINS if domain_results[d]["complexity"].has_evidence]
+    comp_weighted_sum = sum(domain_results[d]["complexity"].normalized_score * domain_weights[d] for d in evidenced_complexity)
+    comp_weight_total = sum(domain_weights[d] for d in evidenced_complexity)
+    if comp_weight_total > 0:
+        scores["complexity"] = max(0.0, min(100.0, comp_weighted_sum / comp_weight_total))
+    else:
+        scores["complexity"] = 0.0
+
+    # 2. Confidence and Readiness: aggregate over ALL 8 domains (unevidenced = 0.0) (A1)
+    total_weights = sum(domain_weights[d] for d in DOMAINS)
+    for measure in ("confidence", "readiness"):
+        m_weighted_sum = 0.0
         for domain in DOMAINS:
             dr = domain_results[domain][measure]
-            if not dr.has_evidence:
-                continue
-            w = domain_weights[domain]
-            weighted_sum += dr.normalized_score * w
-            weight_total += w
+            score_val = dr.normalized_score if dr.has_evidence else 0.0
+            m_weighted_sum += score_val * domain_weights[domain]
 
-        if weight_total > 0:
-            scores[measure] = max(0.0, min(100.0, weighted_sum / weight_total))
+        if total_weights > 0:
+            scores[measure] = max(0.0, min(100.0, m_weighted_sum / total_weights))
         else:
             scores[measure] = 0.0
+
+    # 3. Confidence coverage cap (A2)
+    evidenced_any = [
+        d for d in DOMAINS
+        if domain_results[d]["complexity"].has_evidence or domain_results[d]["confidence"].has_evidence
+    ]
+    coverage_ratio = len(evidenced_any) / 8.0
+    cap_config = ruleset.get("coverage_cap", {})
+    cap_mult = float(cap_config.get("multiplier", 100.0))
+    cap_val = coverage_ratio * cap_mult
+    scores["confidence"] = max(0.0, min(scores["confidence"], cap_val))
 
     return scores
 
@@ -877,29 +1135,38 @@ def compute_assessment(
     if evidence is None:
         return None
 
-    # Evaluate rules
-    domain_results = evaluate_rules(ruleset, evidence, weight_overrides)
+    # Evaluate rules with condition integrity error tracking
+    eval_errors: list[dict] = []
+    domain_results = evaluate_rules(ruleset, evidence, weight_overrides, evaluation_errors=eval_errors)
 
-    # If human reviewed, fire the human-reviewed positive confidence rule
-    if human_reviewed:
+    # If human reviewed or confirmed findings exist, feed the human-validation confidence factor (A10)
+    confirmed_count = 0
+    try:
+        from app.services.review_service import get_confirmed_findings_count
+        confirmed_count = get_confirmed_findings_count(db, application_id)
+    except Exception:
+        confirmed_count = 0
+
+    if human_reviewed or confirmed_count > 0:
+        boost = min(20, 5 + confirmed_count * 2) if confirmed_count > 0 else 5
         dr = domain_results["application_business_logic"]["confidence"]
         firing = RuleFiring(
             rule_id="CF-ALL-001",
             domain="application_business_logic",
             measure="confidence",
-            description="Human-validated findings increase confidence",
-            weight=5,
+            description=f"Human-validated findings ({confirmed_count} confirmed) increase confidence",
+            weight=boost,
             impact="positive",
             severity="info",
             explanation="Human review of machine-generated findings increases the reliability of assessment conclusions.",
             recommendation=None,
             upgrade_guidance=None,
             evidence_refs=[],
-            points=5,
+            points=boost,
         )
         dr.fired_rules.append(firing)
-        dr.raw_score += 5
-        dr.positive_factors.append("CF-ALL-001: Human-validated findings increase confidence")
+        dr.raw_score += boost
+        dr.positive_factors.append(f"CF-ALL-001: Human-validated findings increase confidence (+{boost})")
         dr.has_evidence = True
 
     # Normalize
@@ -913,6 +1180,32 @@ def compute_assessment(
     complexity_class = classify_score(scores["complexity"], "complexity", thresholds)
     confidence_class = classify_score(scores["confidence"], "confidence", thresholds)
     readiness_class = classify_score(scores["readiness"], "readiness", thresholds)
+
+    # B2: Gating Readiness Model
+    unparsed_artifacts = [
+        a for a in evidence.artifacts
+        if a.parse_status in ("error", "unsupported") or a.support_level == "UNSUPPORTED"
+    ]
+    open_high_findings = [
+        f for f in evidence.findings
+        if f.severity and f.severity.lower() == "high" and f.review_status != "dismissed"
+    ]
+    pending_reviews = [
+        f for f in evidence.findings
+        if f.review_status == "pending"
+    ]
+
+    readiness_gates: list[str] = []
+    if unparsed_artifacts:
+        readiness_gates.append(f"Artifact parsing gate: {len(unparsed_artifacts)} unparsed/unsupported artifact(s) present")
+    if open_high_findings:
+        readiness_gates.append(f"Defect gate: {len(open_high_findings)} open HIGH severity finding(s) require remediation")
+    if pending_reviews:
+        readiness_gates.append(f"Review gate: {len(pending_reviews)} finding(s) have pending human reviews")
+
+    if readiness_gates and readiness_class == "Ready for Detailed Planning":
+        readiness_class = "Partially Ready"
+        scores["readiness"] = min(69.0, scores["readiness"])
 
     # Build domain score dict
     domain_scores: dict[str, dict[str, float]] = {}
@@ -989,6 +1282,19 @@ def compute_assessment(
 
     elapsed = int((time.perf_counter() - start) * 1000)
 
+    # Evidenced domains for complexity (A1)
+    evidenced_complexity = [d for d in DOMAINS if domain_results[d]["complexity"].has_evidence]
+    domains_assessed = len(evidenced_complexity)
+    coverage_ratio = round(domains_assessed / len(DOMAINS), 4) if DOMAINS else 1.0
+    unassessed_domains = [d for d in DOMAINS if not domain_results[d]["complexity"].has_evidence]
+    ruleset_info = get_ruleset_info(ruleset)
+    rule_counts = ruleset_info.get("rule_counts", {})
+
+    if readiness_gates:
+        for gate in readiness_gates:
+            missing_info.append(f"Readiness Gate: {gate}")
+            limitations.append(f"Readiness Gate: {gate}")
+
     return AssessmentResult(
         application_id=application_id,
         model_version=MODEL_VERSION,
@@ -1011,6 +1317,12 @@ def compute_assessment(
         recommended_next_steps=next_steps,
         evidence_refs=all_evidence,
         duration_ms=elapsed,
+        domains_assessed=domains_assessed,
+        coverage_ratio=coverage_ratio,
+        unassessed_domains=unassessed_domains,
+        rule_counts=rule_counts,
+        version_comparison_warning=None,
+        evaluation_errors=eval_errors,
     )
 
 
@@ -1141,6 +1453,12 @@ def serialize_assessment(result: AssessmentResult) -> dict:
         "recommended_next_steps": result.recommended_next_steps,
         "evidence_refs": result.evidence_refs,
         "duration_ms": result.duration_ms,
+        "domains_assessed": result.domains_assessed,
+        "coverage_ratio": result.coverage_ratio,
+        "unassessed_domains": result.unassessed_domains,
+        "rule_counts": result.rule_counts,
+        "version_comparison_warning": result.version_comparison_warning,
+        "evaluation_errors": result.evaluation_errors,
     }
 
 
@@ -1187,3 +1505,176 @@ def serialize_domain_breakdown(result: AssessmentResult) -> dict:
                 "not_evidenced_notes": dr.not_evidenced_notes,
             }
     return out
+
+
+def generate_rule_audit(
+    db: Session,
+    application_id: str,
+    ruleset: dict | None = None,
+) -> dict | None:
+    """Generate a comprehensive per-rule evaluation audit trace for an application.
+
+    Explains for each rule in the ruleset:
+    - Status: 'fired' | 'evaluated_not_fired' | 'inapplicable'
+    - Specific explanation of why it fired or did not fire
+    - Clause-level breakdown of the detection condition
+    - Contributing evidence snippets if fired
+    """
+    if ruleset is None:
+        ruleset = load_ruleset()
+
+    evidence = collect_evidence(db, application_id)
+    if evidence is None:
+        return None
+
+    app_ctx = _build_application_context(evidence)
+    artifact_map = {a.id: a for a in evidence.artifacts}
+
+    audit_rules: list[dict[str, Any]] = []
+
+    for rule in ruleset.get("rules", []):
+        rule_id = rule["rule_id"]
+        domain = rule["domain"]
+        measure = rule["measure"]
+        cond = rule["detection_condition"]
+        desc = rule["description"]
+        weight = rule["weight"]
+        impact = rule["impact"]
+        severity = rule["severity"]
+
+        is_applicable = _is_rule_applicable(rule, evidence)
+        if not is_applicable:
+            audit_rules.append({
+                "rule_id": rule_id,
+                "domain": domain,
+                "measure": measure,
+                "description": desc,
+                "weight": weight,
+                "impact": impact,
+                "severity": severity,
+                "status": "inapplicable",
+                "reason": "Rule is inapplicable: application does not use this technology or artifact type.",
+                "firings_count": 0,
+                "evidence_snippets": [],
+                "detection_condition": cond,
+                "clause_evaluations": [],
+            })
+            continue
+
+        # Evaluate rule
+        scope = rule.get("evaluation_scope")
+        if not scope:
+            if "component_type" in cond or "detected_properties" in cond or "component.evidence_class" in cond:
+                scope = "component"
+            elif "artifact_category" in cond or "artifact." in cond or "artifact " in cond:
+                scope = "artifact"
+            elif "dependency." in cond or "dependency " in cond:
+                scope = "dependency"
+            else:
+                scope = "application"
+
+        matched_components: list[str] = []
+        snippets: list[str] = []
+        eval_errors: list[dict] = []
+
+        if scope == "component":
+            for comp in evidence.components:
+                art = artifact_map.get(comp.source_artifact_id)
+                ctx = _build_component_context(comp, art)
+                ctx.update(app_ctx)
+                if _evaluate_condition(cond, ctx, rule_id=rule_id, evaluation_errors=eval_errors) is True:
+                    matched_components.append(comp.name)
+                    refs = _component_evidence_refs(comp)
+                    for r in refs:
+                        if r.get("snippet"):
+                            snippets.append(r["snippet"])
+
+        elif scope == "artifact":
+            for art in evidence.artifacts:
+                ctx = _build_artifact_context(art)
+                ctx.update(app_ctx)
+                if _evaluate_condition(cond, ctx, rule_id=rule_id, evaluation_errors=eval_errors) is True:
+                    matched_components.append(art.original_filename)
+                    snippets.append(f"Artifact: {art.original_filename} ({art.category})")
+
+        elif scope == "dependency":
+            for dep in evidence.dependencies:
+                ctx = {
+                    "dependency.evidence_class": dep.evidence_class,
+                    "dependency.relationship_type": dep.relationship_type,
+                }
+                ctx.update(app_ctx)
+                if _evaluate_condition(cond, ctx, rule_id=rule_id, evaluation_errors=eval_errors) is True:
+                    matched_components.append(f"{dep.source_component_id}->{dep.target_component_id}")
+                    ref = _parse_json_safe(dep.evidence_ref, {})
+                    if ref.get("snippet"):
+                        snippets.append(ref["snippet"])
+
+        else:
+            ctx = dict(app_ctx)
+            ctx["has_jcl"] = evidence.has_jcl
+            ctx["has_ddl"] = evidence.has_ddl
+            ctx["has_bms"] = evidence.has_bms
+            ctx["has_cobol"] = evidence.has_cobol
+            ctx["has_assembler"] = evidence.has_assembler
+            ctx["has_cics_transactions"] = evidence.has_cics_transactions
+            ctx["has_copybooks"] = bool(evidence.artifacts_by_category.get("Copybook")) or any(c.component_type == "COPYBOOK" for c in evidence.components)
+            ctx["has_unknown_copybooks"] = len(evidence.copybook_components_unknown) > 0
+            ctx["no_unknown_copybooks"] = len(evidence.copybook_components_unknown) == 0
+            ctx["has_embedded_sql"] = evidence.has_embedded_sql
+            ctx["has_security_components"] = evidence.has_security_components
+            ctx["has_config_artifacts"] = bool(evidence.artifacts_by_category.get("Config"))
+            ctx["unsupported_count"] = sum(1 for a in evidence.artifacts if a.support_level == "UNSUPPORTED")
+            ctx["unresolved_dependencies"] = evidence.unresolved_dependencies
+            ctx["embedded_SQL_detected_but_no_DDL"] = evidence.has_embedded_sql and not evidence.has_ddl
+            if _evaluate_condition(cond, ctx, rule_id=rule_id, evaluation_errors=eval_errors) is True:
+                matched_components.append("Application Level")
+
+        # Break down condition clauses
+        raw_clauses = [c.strip() for c in cond.split(" and ") if c.strip()]
+        clause_evals = []
+        for cl in raw_clauses:
+            clause_evals.append({
+                "clause": cl,
+                "passed": len(matched_components) > 0,
+            })
+
+        if matched_components:
+            status = "fired"
+            sample_names = ", ".join(matched_components[:3])
+            suffix = f" and {len(matched_components) - 3} more" if len(matched_components) > 3 else ""
+            reason = f"Rule fired on {len(matched_components)} instance(s): {sample_names}{suffix}."
+        else:
+            status = "evaluated_not_fired"
+            reason = "Condition evaluated to False: no components or artifacts matched the condition."
+
+        audit_rules.append({
+            "rule_id": rule_id,
+            "domain": domain,
+            "measure": measure,
+            "description": desc,
+            "weight": weight,
+            "impact": impact,
+            "severity": severity,
+            "status": status,
+            "reason": reason,
+            "firings_count": len(matched_components),
+            "evidence_snippets": snippets[:5],
+            "detection_condition": cond,
+            "clause_evaluations": clause_evals,
+        })
+
+    fired_count = sum(1 for r in audit_rules if r["status"] == "fired")
+    applicable_count = sum(1 for r in audit_rules if r["status"] != "inapplicable")
+
+    return {
+        "application_id": application_id,
+        "application_name": evidence.application.name,
+        "ruleset_id": ruleset["ruleset_id"],
+        "ruleset_version": ruleset["version"],
+        "total_rules": len(ruleset["rules"]),
+        "fired_rules_count": fired_count,
+        "applicable_rules_count": applicable_count,
+        "inapplicable_rules_count": len(ruleset["rules"]) - applicable_count,
+        "rules": audit_rules,
+    }
